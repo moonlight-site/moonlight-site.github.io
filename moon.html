@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>moon — an ai made for you</title>
+ <link rel="icon" type="image/x-icon" href="/branding/favicon.png">
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src=/js/chip.js></script>
+<!-- Inter Tight Font -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;600&display=swap" rel="stylesheet">
+
+<link href="/css/moon.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="container">
+  <div class="topbar">
+    <div class="topbar-left">
+      <strong style="font-size:18px;">Moon</strong>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <div class="chip" id="statusChip"><div class="online-dot"></div> <span id="statusText">Connecting...</span></div>
+      <button id="settingsBtn" style="background:none; border:none; color:#fff; font-size:18px; cursor:pointer;"><i class="fa-solid fa-gear"></i></button>
+    </div>
+  </div>
+
+  <div class="chat" id="chat"></div>
+
+  <div class="input-area">
+    <div class="input-wrapper"><input id="userInput" placeholder="Connecting to AI..." disabled></div>
+    <button id="sendBtn" disabled><i class="fa-solid fa-paper-plane"></i></button>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settingsModal">
+  <div class="modal-content">
+    <h2>Customize Moon</h2>
+    <div class="setting-item">
+      <div class="title">Use Memory</div>
+      <div class="description">Use conversation history to personalize responses</div>
+      <label class="switch">
+        <input type="checkbox" id="memoryToggleSetting">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="setting-item">
+      <div class="title">Personality</div>
+      <div class="description">Decide how Moon responds to requests</div>
+      <div class="custom-dropdown" id="personalityDropdown">
+        <div class="selected"><span>Normal</span> <i class="fa fa-caret-down"></i></div>
+        <div class="options">
+          <div class="option" data-instr="These are your custom instructions. Follow them very closely. Your name is Moon. Keep responses short and clear.">
+            <div class="opt-title">Normal</div>
+            <div class="opt-desc">Moon's base prompt</div>
+          </div>
+          <div class="option" data-instr="Respond efficiently and short. Be blunt and straightforward.">
+            <div class="opt-title">Blunt</div>
+            <div class="opt-desc">Respond efficiently, and short.</div>
+          </div>
+          <div class="option" data-instr="Ask questions and elaborate. Explore topics thoroughly.">
+            <div class="opt-title">Explore</div>
+            <div class="opt-desc">Ask questions and elaborate</div>
+          </div>
+          <div class="option" data-instr="Deeper thinking, made for advice. Give guidance thoughtfully.">
+            <div class="opt-title">Guidance</div>
+            <div class="opt-desc">Deeper thinking, made for advice</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="roadblockModal" style="display:none;">
+  <div class="modal-content">
+      <i class="fa-solid fa-triangle-exclamation fa-2x"></i><br>
+    <h2>We hit a roadblock.</h2>
+    <p>We couldn't contact the AI.</p>
+    <p>This typically happens due to network filters or poor connection.</p>
+    <small>Refreshing the page may fix this issue.</small>
+  </div>
+</div>
+
+<script src="/js/moon.js" type="module">
+
+
+</script>
+</body>
+</html>

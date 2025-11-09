@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>moonlight — games</title>
+<link rel="icon" href="/branding/favicon.png" />
+<script src="/js/chip.js" ></script>
+<!-- Inter Tight -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<link rel="stylesheet" href="/css/games.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">
+      <div style="font-size:20px"><img src="/branding/logo.png" height="40px" width="40px"></div>
+      <div>
+        <div class="moon">Games</div>
+        <div style="font-size:12px; opacity:0.8;">Play 150+ games</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <input id="searchInput" class="search" placeholder="Search games or tags..." />
+      <select id="sortSelect" class="sort">
+        <option value="your_favorites">Your Favorites</option>
+        <option value="favorites">Most Favorited</option>
+        <option value="plays">Most Played</option>
+        <option value="relevance">Relevance</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- grid / loader -->
+  <div id="contentArea">
+    <!-- skeleton shown initially — replaced with grid -->
+    <div class="skeleton-grid" id="skeletons">
+      <div class="skeleton"><div class="s-thumb"></div><div class="s-line"></div><div class="s-line short"></div></div>
+      <div class="skeleton"><div class="s-thumb"></div><div class="s-line"></div><div class="s-line short"></div></div>
+      <div class="skeleton"><div class="s-thumb"></div><div class="s-line"></div><div class="s-line short"></div></div>
+      <div class="skeleton"><div class="s-thumb"></div><div class="s-line"></div><div class="s-line short"></div></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="/js/games.js" type="module">
+
+</script>
+</body>
+</html>

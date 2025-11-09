@@ -1,0 +1,9 @@
+body {
+  background: linear-gradient(135deg,#000,#8c8c8c,#000);
+  color:#fff;
+  display:flex;
+  justify-content:center;
+  height:100vh;
+  padding:20px;
+  overflow:hidden;
+}

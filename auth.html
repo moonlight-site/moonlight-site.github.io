@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>moonlight - secure auth</title>
+<link rel="icon" href="/branding/favicon.png" />
+<script src="/js/chip.js"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="icon" href="/branding/favicon.png" />
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<!-- Inter Tight -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/css/auth.css">
+</head>
+<body>
+
+<div class="auth-wrap">
+  <div class="panel" id="panel"></div>
+</div>
+
+<!-- Roadblock modal (unclickable) -->
+<div class="roadblock" id="roadblock" aria-hidden="true">
+  <div class="modal">
+    <i class="fa-solid fa-triangle-exclamation" style="font-size:28px; color:var(--danger);"></i>
+    <h2>We hit a roadblock.</h2>
+    <p id="roadblock-desc-line1">We couldn't connect to our profanity checker.</p>
+    <p id="roadblock-desc-line2">You are unable to sign up.</p>
+  </div>
+</div>
+
+<script src="/js/auth.js" type="module">
+
+</script>
+</body>
+</html>

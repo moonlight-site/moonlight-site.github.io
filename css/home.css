@@ -1,0 +1,137 @@
+    :root {
+        --bg: #000;
+        --fg: #fff;
+        --accent: #9b9b9b;
+        --card-bg: #111;
+        --glow: rgba(255,255,255,0.15);
+    }
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: "Inter", sans-serif;
+    }
+
+    body {
+        background: var(--bg);
+        color: var(--fg);
+        overflow-x: hidden;
+    }
+
+    /* Background Glow Blobs */
+    .glow {
+        position: fixed;
+        width: 500px;
+        height: 500px;
+        background: radial-gradient(circle, var(--glow), transparent 60%);
+        filter: blur(120px);
+        animation: float 8s infinite ease-in-out alternate;
+        pointer-events: none;
+        z-index: -1;
+    }
+    .glow:nth-child(1) { top: -100px; left: -100px; }
+    .glow:nth-child(2) { bottom: -100px; right: -150px; animation-delay: 2s; }
+
+    @keyframes float {
+        0% { transform: translateY(-30px) }
+        100% { transform: translateY(30px) }
+    }
+
+    header {
+        width: 100%;
+        text-align: center;
+        padding: 80px 20px;
+        opacity: 0;
+        animation: fadeIn 1.4s ease forwards;
+    }
+
+    @keyframes fadeIn {
+        to { opacity: 1; }
+    }
+
+    h1 {
+        font-size: 3.8rem;
+        font-weight: 700;
+        margin-bottom: 10px;
+        letter-spacing: -1px;
+    }
+
+    p.sub {
+        font-size: 1.2rem;
+        color: var(--accent);
+        margin-bottom: 40px;
+    }
+
+    .cta {
+        margin-top: 30px;
+        display: inline-block;
+        padding: 14px 34px;
+        border: 1px solid var(--fg);
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 1.1rem;
+        text-decoration: none;
+        color: var(--fg);
+        transition: 0.3s;
+    }
+    .cta:hover {
+        background: var(--fg);
+        color: var(--bg);
+        transform: translateY(-3px) scale(1.03);
+    }
+
+    .features {
+        margin-top: 80px;
+        display: flex;
+        justify-content: center;
+        gap: 30px;
+        flex-wrap: wrap;
+        padding: 0 20px 120px;
+        opacity: 0;
+        animation: fadeInUp 1.4s ease 0.4s forwards;
+    }
+
+    @keyframes fadeInUp {
+        to {
+            opacity: 1; 
+            transform: translateY(0);
+        }
+        from {
+            transform: translateY(20px);
+        }
+    }
+
+    .card {
+        background: var(--card-bg);
+        border: 1px solid #222;
+        border-radius: 20px;
+        padding: 30px;
+        width: 260px;
+        text-align: center;
+        transition: 0.35s ease;
+        cursor: default;
+    }
+    .card:hover {
+        transform: translateY(-8px) scale(1.03);
+        border-color: var(--fg);
+        box-shadow: 0 0 40px rgba(255,255,255,0.08);
+    }
+
+    .card i {
+        font-size: 2rem;
+        margin-bottom: 18px;
+        color: var(--fg);
+    }
+
+    .card h3 {
+        font-size: 1.3rem;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+
+    .card p {
+        font-size: 0.95rem;
+        color: var(--accent);
+        line-height: 1.4;
+    }

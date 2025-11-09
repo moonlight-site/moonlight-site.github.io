@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>moonlight - play</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="icon" href="/branding/favicon.png" />
+<script src="/js/chip.js"></script>
+<link rel="stylesheet" href="/css/play.css"/>
+</head>
+<body>
+
+<div class="game-wrapper">
+  
+  <div class="iframe-container">
+    <iframe id="gameFrame"></iframe>
+    <div class="loader-overlay" id="loader"></div>
+  </div>
+
+  <div class="controls-bar">
+    <img id="gameImg">
+    <h2 id="gameName"></h2>
+    <button class="icon-btn" id="reloadBtn"><i class="fa-solid fa-rotate-right"></i></button>
+    <button class="icon-btn" id="fullscreenBtn"><i class="fa-solid fa-expand"></i></button>
+  </div>
+
+</div>
+
+<script src="/js/play.js" type="module">
+</script>
+
+</body>
+</html>

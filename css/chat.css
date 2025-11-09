@@ -1,0 +1,119 @@
+:root{
+  --bg:#000;
+  --glass: rgba(255,255,255,0.04);
+  --glass-2: rgba(255,255,255,0.06);
+  --border: rgba(255,255,255,0.10);
+  --muted: rgba(255,255,255,0.6);
+  --danger: #ff4a4a;
+  --success: #4aff8a;
+  --fg: #fff;
+}
+  :root{ --bg-1:#000; --glass-bg: rgba(255,255,255,0.05); --glass-border: rgba(255,255,255,0.12); --accent: rgba(255,255,255,0.14); --danger:#ff4a4a; --success:#4aff8a; }
+
+  body{
+
+    background: linear-gradient(135deg,var(--bg-1), #1f1f1f 40%, var(--bg-1)); 
+
+  }
+/* Reset & layout */
+*{box-sizing:border-box;margin:0;padding:0;font-family:"Inter Tight",system-ui,Segoe UI,Roboto,Arial;color:var(--fg)}
+html,body{height:100%;-webkit-font-smoothing:antialiased;overflow:hidden}
+.app {
+  height:100vh; display:flex; align-items:center; justify-content:center;
+  padding:20px;
+}
+
+/* Card */
+.card {
+  width:100%; max-width:980px; height:86vh; border-radius:18px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border:1px solid var(--border); padding:18px; display:grid;
+  grid-template-rows: auto 1fr auto; gap:12px; backdrop-filter: blur(20px);
+  box-shadow: 0 18px 60px rgba(0,0,0,0.6);
+  position:relative; overflow:hidden;
+}
+
+/* Header */
+.header {
+  display:flex; align-items:center; justify-content:space-between; gap:12px; padding:6px 8px;
+}
+.brand { display:flex; gap:12px; align-items:center; }
+.brand .logo {
+  width:44px; height:44px; border-radius:10px; background:linear-gradient(135deg,#111,#000); border:1px solid rgba(255,255,255,0.06);
+  display:flex; align-items:center; justify-content:center; font-size:20px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+}
+.header .status { font-size:13px; color:var(--muted); display:flex; align-items:center; gap:8px; }
+.pulse { width:9px;height:9px;border-radius:50%; background:var(--success); box-shadow:0 0 8px rgba(74,255,138,0.15); animation: pulse 1.6s infinite; }
+@keyframes pulse { 0% {opacity:1; transform:scale(1)} 50% {opacity:.4; transform:scale(.9)} 100% {opacity:1; transform:scale(1)} }
+
+/* Messages area */
+.messages-wrap { padding:8px; border-radius:12px; border:1px solid rgba(255,255,255,0.02); background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00)); height:100%; display:flex; flex-direction:column; }
+.messages { flex:1; overflow:auto; display:flex; flex-direction:column; gap:12px; padding:12px; scroll-behavior:smooth; }
+
+/* message row */
+.msg-row { display:flex; gap:10px; align-items:flex-start; max-width:80%; transition: transform .18s, opacity .18s; }
+.msg-row.incoming { align-self:flex-start; }
+.msg-row.outgoing { align-self:flex-end; flex-direction:row-reverse; }
+
+.msg-meta { display:flex; flex-direction:column; align-items:flex-start; gap:6px; }
+.msg-meta.right { align-items:flex-end; text-align:right; }
+
+.avatar { width:40px;height:40px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.06); background:linear-gradient(135deg,#111,#000); display:flex;align-items:center;justify-content:center }
+.avatar img { width:100%; height:100%; object-fit:cover; display:block; }
+
+.username { font-size:13px; opacity:0.9; font-weight:600 }
+.bubble {
+  padding:10px 14px; border-radius:14px; background:var(--glass); border:1px solid rgba(255,255,255,0.06);
+  max-width:560px; word-wrap:break-word; white-space:pre-wrap; font-size:15px; line-height:1.35;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+  position:relative;
+}
+.msg-row.outgoing .bubble { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.08); }
+.msg-row.incoming .username { color:var(--muted); }
+.msg-row.outgoing .username { color:var(--muted); }
+
+/* input area */
+.composer { display:flex; gap:10px; align-items:flex-end; padding:12px; border-top:1px solid rgba(255,255,255,0.03); background: linear-gradient(180deg, rgba(0,0,0,0.02), transparent); }
+.input-wrap { flex:1; display:flex; flex-direction:column; gap:6px; }
+.message-input {
+  width:100%; min-height:48px; resize:none; padding:12px 14px; border-radius:12px; background:var(--glass-2);
+  border:1px solid rgba(255,255,255,0.06); color:var(--fg); outline:none; font-size:15px;
+  transition: box-shadow .14s, border-color .14s, transform .12s;
+}
+.message-input:focus { box-shadow: 0 8px 26px rgba(0,0,0,0.5); transform: translateY(-2px); border-color: rgba(255,255,255,0.12); }
+.input-error { border-color: var(--danger) !important; box-shadow: 0 8px 26px rgba(255,74,74,0.06) !important; }
+.controls { display:flex; gap:8px; align-items:center; }
+
+/* send button */
+.send-btn { background:var(--glass-2); border:1px solid rgba(255,255,255,0.07); color:var(--fg); padding:10px 14px; border-radius:12px; cursor:pointer; display:inline-flex; gap:8px; align-items:center; font-weight:600; }
+.send-btn[disabled] { opacity:0.5; cursor:default; transform:none; }
+
+/* small helper text */
+.helper { font-size:13px; color:var(--muted); }
+
+/* skeleton */
+.skeleton {
+  height:76px; border-radius:12px; background: linear-gradient(90deg,#121212,#1d1d1d,#121212);
+  background-size:200% 100%; animation:skeleton 1.6s infinite linear;
+}
+@keyframes skeleton { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* roadblock modal (unclickable) */
+.roadblock {
+  position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:99999;
+  background: rgba(0,0,0,0.86);
+}
+.roadblock .modal {
+  width:420px; border-radius:12px; padding:26px; background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.10);
+  text-align:center; backdrop-filter: blur(18px);
+}
+.roadblock h2{ font-size:20px; margin-bottom:8px; }
+.roadblock p{ color:var(--muted); margin-bottom:6px; }
+
+/* small animation for message arrival */
+.msg-appear { animation: arrive .18s cubic-bezier(.2,.9,.3,1); }
+@keyframes arrive { from {opacity:0; transform: translateY(8px) scale(.995)} to {opacity:1; transform:translateY(0) scale(1)} }
+
+/* responsive */
+@media (max-width:680px){ .card { width:100%; height:100vh; border-radius:14px; padding:12px } .bubble{max-width:78vw} }
