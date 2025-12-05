@@ -190,4 +190,145 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 });
+document.addEventListener('DOMContentLoaded', () => {
 
+
+// Moonlight Notification System (JS Only) with stacking
+(function() {
+  // create container if not exists
+  let container = document.getElementById('moonNotifContainer');
+  if(!container) {
+    container = document.createElement('div');
+    container.id = 'moonNotifContainer';
+    container.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      z-index: 99999;
+      pointer-events: none;
+    `;
+    document.body.appendChild(container);
+  }
+
+  const closedNotifs = new Set();
+
+  window.showMoonNotification = function({ 
+    id, 
+    icon='fa-solid fa-bell', 
+    title='Notification', 
+    body='', 
+    duration=5000, 
+    closable=true, 
+    persistent=false 
+  }) {
+    // skip if persistent and closed before
+    if(persistent && id && closedNotifs.has(id)) return;
+
+    // notification wrapper
+    const notif = document.createElement('div');
+    notif.style.cssText = `
+      display:flex; align-items:flex-start; gap:12px;
+      padding:12px 16px; border-radius:12px;
+      background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(16px); box-shadow:0 8px 22px rgba(0,0,0,0.45);
+      color:#fff; max-width:320px; font-family:"Inter Tight",system-ui,sans-serif;
+      opacity:0; transform:translateX(18px);
+      transition: opacity .4s ease, transform .4s ease, margin-top .3s ease;
+      pointer-events: auto;
+      position: relative;
+    `;
+
+    // icon
+    const iconEl = document.createElement('div');
+    iconEl.innerHTML = `<i class="${icon}"></i>`;
+    iconEl.style.cssText = `
+      flex-shrink:0; width:40px; height:40px; border-radius:10px;
+      background: rgba(255,255,255,0.06); display:flex;align-items:center;justify-content:center;
+      font-size:18px;
+    `;
+    notif.appendChild(iconEl);
+
+    // content
+    const content = document.createElement('div');
+    content.style.cssText = 'flex:1; display:flex; flex-direction:column; gap:4px;';
+    const titleEl = document.createElement('div');
+    titleEl.textContent = title;
+    titleEl.style.cssText = 'font-weight:700; font-size:15px;';
+    const bodyEl = document.createElement('div');
+    bodyEl.textContent = body;
+    bodyEl.style.cssText = 'font-size:14px; opacity:0.85; line-height:1.3;';
+    content.appendChild(titleEl);
+    content.appendChild(bodyEl);
+    notif.appendChild(content);
+
+    // close button
+    if(closable){
+      const closeBtn = document.createElement('div');
+      closeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+      closeBtn.style.cssText = `
+        margin-left:8px; cursor:pointer; font-size:14px; opacity:0.7;
+        transition: opacity .14s;
+      `;
+      closeBtn.onmouseenter = ()=>closeBtn.style.opacity='1';
+      closeBtn.onmouseleave = ()=>closeBtn.style.opacity='0.7';
+      closeBtn.onclick = () => removeNotif();
+      notif.appendChild(closeBtn);
+    }
+
+    // inject at top for stacking effect
+    if(container.firstChild){
+      container.insertBefore(notif, container.firstChild);
+    } else {
+      container.appendChild(notif);
+    }
+
+    // animate in
+    requestAnimationFrame(()=>{
+      notif.style.opacity='1'; 
+      notif.style.transform='translateX(0)';
+    });
+
+    let timeoutId;
+    if(duration>0){
+      timeoutId = setTimeout(removeNotif, duration);
+    }
+
+    function removeNotif() {
+      notif.style.opacity='0';
+      notif.style.transform='translateX(18px)';
+      notif.addEventListener('transitionend', ()=>{
+        if(notif.parentNode) notif.parentNode.removeChild(notif);
+      });
+      if(timeoutId) clearTimeout(timeoutId);
+      if(persistent && id) closedNotifs.add(id);
+    }
+
+    return notif;
+  };
+
+  // Example notifications on page load
+  window.addEventListener('DOMContentLoaded', () => {
+    showMoonNotification({
+      title: 'Welcome!',
+      body: 'You have successfully signed in.',
+      icon: 'fa-solid fa-moon',
+      duration: 4000
+    });
+
+    showMoonNotification({
+      id: 'update-1',
+      title: 'Update Available',
+      body: 'A new feature is ready!',
+      icon: 'fa-solid fa-circle-info',
+      closable: true,
+      persistent: true,
+      duration: 0 // stays until manually closed
+    });
+  });
+
+})();
+
+});
