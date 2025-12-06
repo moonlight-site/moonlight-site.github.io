@@ -5,9 +5,57 @@ const onlineDot = statusChip.querySelector(".online-dot");
 const chat = document.getElementById("chat");
 const input = document.getElementById("userInput");
 const sendBtn = document.getElementById("sendBtn");
+const signInModal = document.getElementById("signInModal");
 
 let memoryEnabled = true;
 const memoryToggleSetting = document.getElementById("memoryToggleSetting");
+
+// Authentication state
+let userSignedIn = false;
+
+// Check if user is signed in
+async function checkAuthStatus() {
+  console.log('🔐 Checking authentication status...');
+  try {
+    // Wait for Supabase client to be ready
+    if (!window.supabaseClient) {
+      console.log('⏳ Waiting for Supabase client to initialize...');
+      await new Promise((resolve) => {
+        if (window.supabaseClient) {
+          resolve();
+        } else {
+          const handler = () => {
+            window.removeEventListener('supabase-ready', handler);
+            resolve();
+          };
+          window.addEventListener('supabase-ready', handler);
+        }
+      });
+    }
+
+    const supabase = window.supabaseClient;
+    if (!supabase) {
+      console.warn('⚠️ Supabase client not available');
+      return false;
+    }
+
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error) {
+      console.error('🚫 Auth check error:', error);
+      userSignedIn = false;
+      return false;
+    }
+
+    userSignedIn = !!user;
+    console.log('👤 User signed in:', userSignedIn, user?.email);
+    return userSignedIn;
+  } catch (err) {
+    console.error('❌ Authentication check failed:', err);
+    userSignedIn = false;
+    return false;
+  }
+}
 
 let basePrompt = "These are your custom instructions, follow them closely. Your name is Moon, and you talk like a calm, friendly Gen Z person, keeping your responses short, clear, and natural without sounding formal, robotic, or overexcited; your tone is supportive, relaxed, and confident, you never judge the user and help them understand things in the simplest way possible, breaking down complicated stuff step-by-step using plain language, avoiding long paragraphs, only going into detail if the user asks, and not using big fancy words unless the user does first; you can use emojis sparingly and only when they fit naturally. You answer questions directly and quickly, speak in a human, natural way, stay positive and encouraging, and offer solutions, suggestions, or simple explanations. You do not ramble, act formal or corporate, try too hard to be funny or “cool,” or overuse emojis or slang. Examples of your tone include: “Got you,” “Okay, here’s the simple version,” “Yeah, that makes sense,” and “Don’t stress, we’ll figure it out.” Your personality is calm, helpful, friendly, patient, and easy to talk to.";
 
@@ -67,6 +115,14 @@ window.addEventListener("load", () => {
 async function askAI(prompt){
   console.log('🌙 User input received:', prompt);
   
+  // Double-check auth before processing
+  if (!userSignedIn) {
+    console.warn('🚫 User not authenticated, blocking AI request');
+    addMessage("You need to sign in to use Moon.", false, true);
+    signInModal.style.display = "flex";
+    return;
+  }
+  
   const container = document.createElement("div");
   container.className = "message-container";
   const header = document.createElement("div");
@@ -121,6 +177,25 @@ async function askAI(prompt){
 // API connection check
 async function checkAPI(){
   console.log('🔍 Checking API status...');
+  
+  // First check if user is signed in
+  const isSignedIn = await checkAuthStatus();
+  
+  if (!isSignedIn) {
+    console.log('🚫 User not signed in, showing sign in modal');
+    statusText.textContent = "Signed out";
+    onlineDot.style.background = "#ff4a4a";
+    onlineDot.style.animation = "none";
+    
+    input.placeholder = "Sign in to use Moon...";
+    input.disabled = true;
+    sendBtn.disabled = true;
+    
+    signInModal.style.display = "flex";
+    return;
+  }
+  
+  // User is signed in, proceed with API check
   statusText.textContent = "Connecting...";
   onlineDot.style.background="#4aff8a";
   onlineDot.style.animation="pulse 1.4s infinite";
@@ -187,6 +262,12 @@ async function checkAPI(){
 checkAPI();
 
 sendBtn.onclick=()=>{
+  if (!userSignedIn) {
+    console.log('🚫 Send clicked but user not signed in');
+    signInModal.style.display = "flex";
+    return;
+  }
+  
   const text=input.value.trim();
   if(!text) return;
   console.log('📝 User clicked send button');

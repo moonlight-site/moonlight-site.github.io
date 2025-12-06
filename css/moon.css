@@ -121,6 +121,23 @@ button:disabled { opacity:0.4; cursor:not-allowed; }
 .typing span:nth-child(3){animation-delay:.3s;}
 @keyframes bounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);} }
 
+#signInModal {
+  position: fixed; top:0; left:0; width:100%; height:100%;
+  background: rgba(0,0,0,0.85);
+  display:flex; justify-content:center; align-items:center;
+  z-index:9999;
+}
+#signInModal .modal-content {
+  background: rgba(255,255,255,0.07);
+  backdrop-filter: blur(25px);
+  border:1px solid rgba(255,255,255,0.15);
+  border-radius:16px;
+  padding:40px; text-align:center; max-width:450px;
+  color:#fff; font-size:16px;
+}
+#signInModal h2 {font-size:24px; margin-bottom:12px;}
+#signInModal p {margin-bottom:8px; line-height:1.5;}
+
 #roadblockModal {
   position: fixed; top:0; left:0; width:100%; height:100%;
   background: rgba(0,0,0,0.85);

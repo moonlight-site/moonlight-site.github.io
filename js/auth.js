@@ -179,7 +179,33 @@
     createOpt.innerHTML = `<div><strong>Create account</strong><div class="small muted">Join Moonlight</div></div><div><i class="fa-solid fa-user-plus"></i></div>`;
     createOpt.onclick = ()=> showSignupForm();
 
-    actions.append(loginOpt, createOpt);
+    const googleOpt = document.createElement('div'); googleOpt.className='option-item';
+    googleOpt.innerHTML = `<div><strong>Google</strong><div class="small muted">Securely access your account with Google</div></div><div><i class="fa-brands fa-google"></i></div>`;
+    googleOpt.onclick = async ()=>{ 
+      console.log('[AUTH] Google sign in clicked');
+      showMsg('Redirecting to Google...'); 
+      try {
+        console.log('[AUTH] Calling signInWithOAuth with provider: google');
+        const { data, error } = await supabase.auth.signInWithOAuth({ 
+          provider: 'google',
+          options: {
+            redirectTo: `${window.location.origin}/auth`
+          }
+        });
+        
+        console.log('[AUTH] OAuth response:', { data, error });
+        
+        if(error) {
+          console.error('[AUTH] Google OAuth error:', error.message);
+          showMsg(error.message || 'Error');
+        }
+      } catch(err) {
+        console.error('[AUTH] Exception during Google OAuth:', err);
+        showMsg('Error: ' + err.message);
+      }
+    };
+
+    actions.append(loginOpt, createOpt, googleOpt);
     panel.append(h, p, actions);
   }
 
@@ -194,20 +220,7 @@
     const magic = document.createElement('div'); magic.className='option-item'; magic.innerHTML = `<div><strong>Magic link</strong><div class="small muted">We’ll email a link</div></div><div><i class="fa-regular fa-envelope"></i></div>`;
     magic.onclick = ()=> showMagicLogin();
 
-    const google = document.createElement('div'); google.className='option-item'; google.innerHTML = `<div><strong>Google</strong><div class="small muted">Sign in with Google</div></div><div><i class="fa-brands fa-google"></i></div>`;
-    google.onclick = async ()=>{ 
-      showMsg('Redirecting...'); 
-      try {
-        const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' }); 
-        if(error) {
-          showMsg(error.message || 'Error');
-        }
-      } catch(err) {
-        showMsg('Error: ' + err.message);
-      }
-    };
-
-    list.append(pwd, magic, google);
+    list.append(pwd, magic);
     panel.append(h, list);
   }
 
@@ -697,13 +710,99 @@
     return { row, input, label };
   }
 
+  /* ---------- OAuth callback handler ---------- */
+  
+  async function handleOAuthCallback() {
+    console.log('[OAUTH] Checking for OAuth callback...');
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('[OAUTH] Session retrieval error:', error);
+        return false;
+      }
+      
+      if (!session) {
+        console.log('[OAUTH] No active session');
+        return false;
+      }
+      
+      console.log('[OAUTH] Active session found for user:', session.user.email);
+      
+      // Check if user has a profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+      
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error('[OAUTH] Profile check error:', profileError);
+        return true; // Session exists but couldn't check profile
+      }
+      
+      // If no profile exists, create one
+      if (!profile) {
+        console.log('[OAUTH] No profile found, creating new profile for user:', session.user.id);
+        
+        const username = session.user.email.split('@')[0] + Math.random().toString(36).substring(7);
+        const avatarUrl = `https://placehold.co/500x500/000/fff?text=${(username[0] || 'U').toUpperCase()}`;
+        
+        const { error: insertError } = await supabase.from('profiles').insert([{
+          id: session.user.id,
+          username: username,
+          email: session.user.email,
+          bio: '',
+          avatar_url: avatarUrl
+        }]);
+        
+        if (insertError) {
+          console.error('[OAUTH] Profile creation error:', insertError);
+          // Profile creation failed, but user is still signed in
+          return true;
+        }
+        
+        console.log('[OAUTH] Profile created successfully for user:', username);
+      } else {
+        console.log('[OAUTH] Existing profile found:', profile.username);
+      }
+      
+      return true;
+    } catch (err) {
+      console.error('[OAUTH] Callback handler exception:', err);
+      return false;
+    }
+  }
+
   /* ---------- init ---------- */
 
   // Start auth flows only after supabase client is ready
   onClientReady(async ()=>{
-    try { supabase.auth.onAuthStateChange((event, session) => { loadUserProfile(); }); } catch(e){ console.error('auth onAuthStateChange bind failed', e); }
+    console.log('[INIT] Client ready, setting up auth state listener and checking for OAuth callback');
+    
+    try { 
+      supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log('[AUTH] Auth state changed:', event, !!session);
+        loadUserProfile(); 
+      }); 
+    } catch(e){ 
+      console.error('[INIT] auth onAuthStateChange bind failed', e); 
+    }
+    
     try {
+      // Handle OAuth callback if we just returned from Google
+      const isOAuthCallback = await handleOAuthCallback();
+      
       const s = await supabase.auth.getSession();
-      if(s.data.session) await loadUserProfile(); else showWelcome();
-    } catch(err){ console.error('failed initial auth check', err); showWelcome(); }
+      if(s.data.session) {
+        console.log('[INIT] User is signed in, loading profile');
+        await loadUserProfile();
+      } else {
+        console.log('[INIT] No active session, showing welcome');
+        showWelcome();
+      }
+    } catch(err){ 
+      console.error('[INIT] failed initial auth check', err); 
+      showWelcome(); 
+    }
   });

@@ -46,8 +46,8 @@ let channel = null;
 /* helper: show roadblock modal (unclickable). mode: 'not-signed-in' | 'profanity' */
 function showRoadblock(mode){
   if(mode === 'not-signed-in'){
-    road1.textContent = "You must be signed in to use Moon Chat.";
-    road2.textContent = "Sign in from the app to continue.";
+    road1.textContent = "You must be signed in to use Moonbeam.";
+    road2.innerHTML = '<a style="color:white !important;" href="/auth.html"> Sign in </a> to continue.';
   } else if(mode === 'profanity'){
     road1.textContent = "We couldn't connect to our profanity checker.";
     road2.textContent = "You are unable to send messages right now.";
