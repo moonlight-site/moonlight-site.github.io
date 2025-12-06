@@ -271,10 +271,60 @@ document.addEventListener('DOMContentLoaded', async () => {
           username.textContent = profile.username || 'User';
           img.src = profile.avatar_url || `https://placehold.co/40x40/000/fff?text=${(profile.username||'U')[0].toUpperCase()}`;
         }
+        
+        // Check if user is banned
+        await checkUserBan(user.id);
       }
     } catch (e) {
       console.error('Profile chip load error:', e);
     }
+  }
+
+  // Ban checking function
+  async function checkUserBan(userId) {
+    try {
+      const supabase = window.supabaseClient;
+      if (!supabase) return;
+      
+      console.log('[BAN CHECK] Checking if user is banned...');
+      const { data: banRecord, error } = await supabase.from('bans').select('*').eq('user_id', userId).maybeSingle();
+      
+      if (error) {
+        console.warn('[BAN CHECK] Ban check error:', error);
+        return; // Continue on error - don't lock out if DB fails
+      }
+      
+      if (banRecord) {
+        console.log('[BAN CHECK] User is banned:', banRecord);
+        
+        // Check if temporary ban is expired
+        if (banRecord.ban_type === 'temporary' && banRecord.banned_until) {
+          const banExpiresAt = new Date(banRecord.banned_until);
+          
+          if (new Date() > banExpiresAt) {
+            console.log('[BAN CHECK] Temporary ban has expired, removing...');
+            // Delete expired ban
+            await supabase.from('bans').delete().eq('id', banRecord.id).catch(console.warn);
+            return; // User is no longer banned
+          }
+        }
+        
+        // User is banned - show 403 error and redirect
+        console.log('[BAN CHECK] User is banned, showing ban page...');
+        showBanScreen(banRecord);
+      }
+    } catch (e) {
+      console.error('[BAN CHECK] Error checking ban:', e);
+    }
+  }
+
+  // Show ban screen
+  function showBanScreen(banRecord) {
+    // Store ban data in sessionStorage so ban.html can access it
+    sessionStorage.setItem('banData', JSON.stringify(banRecord));
+    
+    // Redirect to ban page
+    window.location.href = '/ban.html';
   }
 });
 document.addEventListener('DOMContentLoaded', () => {
