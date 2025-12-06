@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Moonlight — Legal Documents</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+  :root{
+    --bg-1:#000;
+    --glass-bg: rgba(255,255,255,0.05);
+    --glass-border: rgba(255,255,255,0.12);
+    --accent: rgba(255,255,255,0.14);
+    --danger:#ff4a4a;
+    --success:#4aff8a;
+  }
+
+  *{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+    font-family:"Inter Tight",system-ui,Segoe UI,Roboto,Arial;
+  }
+
+  html,body{ height:100%; }
+
+  body{
+    min-height:100vh;
+    background: linear-gradient(135deg,var(--bg-1), #1f1f1f 40%, var(--bg-1));
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:30px;
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+  }
+
+  .legal-container{
+    width:100%;
+    max-width:950px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+    border:1px solid var(--glass-border);
+    border-radius:22px;
+    padding:24px;
+    backdrop-filter: blur(30px);
+    box-shadow: 0 18px 60px rgba(0,0,0,0.6);
+    animation: fadeIn .5s cubic-bezier(.2,.9,.2,1);
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+  }
+
+  @keyframes fadeIn {
+    from{opacity:0; transform:translateY(8px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+
+  .tabs{
+    display:flex;
+    gap:10px;
+    border-bottom:1px solid rgba(255,255,255,0.07);
+    padding-bottom:8px;
+  }
+
+  .tab{
+    padding:10px 16px;
+    border-radius:12px;
+    background: rgba(255,255,255,0.04);
+    border:1px solid rgba(255,255,255,0.06);
+    cursor:pointer;
+    font-size:14px;
+    transition: background .15s, transform .15s;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+
+  .tab:hover{
+    background: rgba(255,255,255,0.08);
+    transform: translateY(-2px);
+  }
+
+  .tab.active{
+    background: rgba(255,255,255,0.14);
+    border-color: rgba(255,255,255,0.18);
+  }
+
+  .content{
+    padding:10px 4px;
+    max-height:60vh;
+    overflow-y:auto;
+    animation: slideIn .3s ease;
+  }
+
+  @keyframes slideIn {
+    from{opacity:0; transform:translateY(6px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+
+  .content h2{
+    margin-bottom:10px;
+    font-size:20px;
+  }
+
+  .content p, .content li{
+    opacity:0.85;
+    font-size:14px;
+    line-height:1.5;
+    margin-bottom:12px;
+  }
+
+  ul { padding-left:20px; }
+</style>
+</head>
+<body>
+
+<div class="legal-container">
+
+  <div class="tabs">
+    <div class="tab active" data-tab="privacy"><i class="fa-solid fa-shield"></i> Privacy Policy</div>
+    <div class="tab" data-tab="tos"><i class="fa-solid fa-file-contract"></i> Terms of Service</div>
+    <div class="tab" data-tab="dmca"><i class="fa-solid fa-flag"></i> DMCA</div>
+    <div class="tab" data-tab="license"><i class="fa-solid fa-code"></i> Code License</div>
+  </div>
+
+  <div class="content" id="contentArea"></div>
+
+</div>
+
+<script>
+const pages = {
+
+  privacy: `
+    <h2>Privacy Policy</h2>
+    <p>Moonlight (“we”, “our”, “us”) respects your privacy and is committed to protecting your data.</p>
+
+    <h3>Information We Collect</h3>
+    <ul>
+      <li>Account information (email, login timestamps)</li>
+      <li>Basic analytics used to ensure reliability and security</li>
+      <li>Error logs and abuse-prevention signals</li>
+    </ul>
+
+    <h3>Information We Do NOT Collect</h3>
+    <ul>
+      <li>No ad tracking</li>
+      <li>No sale of personal data</li>
+      <li>No tracking outside the Moonlight platform</li>
+    </ul>
+
+    <h3>Security</h3>
+    <p>Your data is encrypted in transit and at rest.</p>
+
+    <h3>Contact</h3>
+    <p>Email: <strong>support@moonlight-app.xyz</strong></p>
+  `,
+
+  tos: `
+    <h2>Terms of Service</h2>
+    <p>By using Moonlight, you agree to follow these rules and respect the platform.</p>
+
+    <h3>Prohibited Actions</h3>
+    <ul>
+      <li>Using Moonlight to break any laws</li>
+      <li>Attempting to overload, exploit, or damage platform operations</li>
+      <li>Reverse engineering or bypassing security</li>
+      <li>Using automated scanning/monitoring tools — including ContentKeeper, Blocksi, and similar systems</li>
+    </ul>
+
+    <h3>Account Responsibility</h3>
+    <p>You are responsible for all activity under your account.</p>
+
+    <h3>Service Changes</h3>
+    <p>Features may change or be updated as needed.</p>
+
+    <h3>Contact</h3>
+    <p>Email: <strong>support@moonlight-app.xyz</strong></p>
+  `,
+
+  dmca: `
+    <h2>DMCA Notice</h2>
+    <p>If you believe content on Moonlight infringes your copyright, you may file a DMCA notice.</p>
+
+    <h3>Required Information</h3>
+    <ul>
+      <li>Your full name and contact information</li>
+      <li>Identification of the copyrighted work</li>
+      <li>Identification of the allegedly infringing material</li>
+      <li>A statement of good-faith belief</li>
+      <li>A statement made under penalty of perjury</li>
+      <li>Your physical or digital signature</li>
+    </ul>
+
+    <h3>Submit To</h3>
+    <p><strong>dmca@moonlight-app.xyz</strong></p>
+
+    <h3>Example DMCA Template</h3>
+    <p>You may use this structure:</p>
+
+    <pre style="background:#ffffff0a;border:1px solid #ffffff15;padding:12px;border-radius:12px;white-space:pre-wrap;">
+I am the copyright owner of the work described below.
+
+• Copyrighted Work:
+• Infringing Material:
+• Location/URL:
+• Contact Information:
+
+I have a good-faith belief that this use is not authorized by the copyright owner, its agent, or the law.
+
+I declare under penalty of perjury that the information in this notice is accurate.
+
+Signature:
+Date:
+    </pre>
+  `,
+
+  license: `
+    <h2>Code License</h2>
+    <p>Unless otherwise stated, Moonlight’s source code and assets follow a restricted internal license.</p>
+
+    <h3>Allowed</h3>
+    <ul>
+      <li>Viewing code for educational or reference purposes</li>
+    </ul>
+
+    <h3>Not Allowed Without Permission</h3>
+    <ul>
+      <li>Redistribution</li>
+      <li>Modification</li>
+      <li>Commercial use</li>
+      <li>Republishing design or branding elements</li>
+    </ul>
+
+    <p>All rights reserved by Moonlight.</p>
+  `
+};
+
+const tabs = document.querySelectorAll(".tab");
+const area = document.getElementById("contentArea");
+
+// Load first page default
+area.innerHTML = pages.privacy;
+
+tabs.forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelector(".tab.active").classList.remove("active");
+    tab.classList.add("active");
+
+    const key = tab.dataset.tab;
+
+    area.style.opacity = 0;
+
+    setTimeout(() => {
+      area.innerHTML = pages[key];
+      area.style.opacity = 1;
+    }, 150);
+  });
+});
+</script>
+
+<script src="/js/chip.js"></script>
+
+</body>
+</html>

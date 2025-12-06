@@ -419,3 +419,146 @@ document.addEventListener('DOMContentLoaded', () => {
 })();
 
 });
+
+// === LEGAL AGREEMENT POPUP INJECTION ===
+document.addEventListener("DOMContentLoaded", () => {
+  const AGREED_KEY = "moonlight_legal_acknowledged";
+
+  // If already agreed, do nothing
+  if (localStorage.getItem(AGREED_KEY) === "true") return;
+
+  // ===== Inject Styles =====
+  const legalStyle = document.createElement("style");
+  legalStyle.textContent = `
+    #legal-blur-overlay {
+      position: fixed;
+      inset: 0;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      background: rgba(0,0,0,0.55);
+      z-index: 999999999;
+    }
+
+    #legal-popup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 92%;
+      max-width: 460px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 18px;
+      padding: 26px;
+      color: #fff;
+      font-family: "Inter Tight", system-ui, sans-serif;
+      text-align: center;
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      box-shadow: 0 18px 60px rgba(0,0,0,0.6);
+      animation: fadeInLegal .35s cubic-bezier(.2,.9,.2,1) both;
+      z-index: 9999999999;
+    }
+
+    @keyframes fadeInLegal {
+      from { opacity:0; transform:translate(-50%, -46%) scale(.96); }
+      to { opacity:1; transform:translate(-50%, -50%) scale(1); }
+    }
+
+    #legal-popup h2 {
+      font-size: 22px;
+      margin-bottom: 10px;
+    }
+
+    #legal-popup p {
+      font-size: 14px;
+      opacity: 0.85;
+      margin-bottom: 18px;
+      line-height: 1.5;
+    }
+
+    #legal-agree-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      opacity: 0.9;
+      margin-bottom: 18px;
+      justify-content: center;
+    }
+
+    #legal-continue-btn {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 12px;
+      padding: 12px 18px;
+      font-size: 15px;
+      color: #fff;
+      cursor: pointer;
+      transition: 0.2s;
+      width: 100%;
+    }
+
+    #legal-continue-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    #legal-continue-btn:not(:disabled):hover {
+      transform: translateY(-3px);
+      background: rgba(255,255,255,0.12);
+    }
+  `;
+  document.head.appendChild(legalStyle);
+
+  // ===== Inject Blur Overlay =====
+  const blurOverlay = document.createElement("div");
+  blurOverlay.id = "legal-blur-overlay";
+  document.body.appendChild(blurOverlay);
+
+  // ===== Inject Popup =====
+  const popup = document.createElement("div");
+  popup.id = "legal-popup";
+  popup.innerHTML = `
+    <h2>Before You Continue</h2>
+    <p>
+      To use Moonlight, you must agree to our legal documents.
+      You can review them anytime <a href="/legal" style="color:#4aff8a;">here</a>.
+    </p>
+
+    <div id="legal-agree-row">
+      <input type="checkbox" id="legal-checkbox" />
+      <label for="legal-checkbox">I have read and agree to the legal documents.</label>
+    </div>
+
+    <button id="legal-continue-btn" disabled>Continue</button>
+  `;
+  document.body.appendChild(popup);
+
+  // ===== Checkbox + Continue Logic =====
+  const checkbox = document.getElementById("legal-checkbox");
+  const btn = document.getElementById("legal-continue-btn");
+
+  checkbox.addEventListener("change", () => {
+    btn.disabled = !checkbox.checked;
+  });
+
+  btn.addEventListener("click", () => {
+    localStorage.setItem(AGREED_KEY, "true");
+
+    // remove overlay & popup
+    popup.style.opacity = "0";
+    blurOverlay.style.opacity = "0";
+    setTimeout(() => {
+      popup.remove();
+      blurOverlay.remove();
+    }, 300);
+
+    showMoonNotification({
+      title: "Thank you!",
+      body: "Your agreement has been saved.",
+      icon: "fa-solid fa-circle-check",
+      duration: 3000
+    });
+  });
+});
