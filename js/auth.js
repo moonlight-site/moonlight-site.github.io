@@ -78,6 +78,91 @@
     });
   }
 
+  // ---- Turnstile bot protection helpers ----
+  const TURNSTILE_SITE_KEY = '0x4AAAAAACFDuiuySIP8Fi-o';
+  let turnstileContainerId = null;
+
+  function renderTurnstileWidget() {
+    console.log('[TURNSTILE] renderTurnstileWidget() called');
+    if (!turnstileContainerId) {
+      // Create a container for the widget if not already done
+      console.log('[TURNSTILE] Creating new container...');
+      const container = document.createElement('div');
+      container.id = 'turnstile-widget-container';
+      container.style.cssText = 'margin: 16px 0; display: flex; justify-content: center;';
+      panel.appendChild(container);
+      turnstileContainerId = 'turnstile-widget-container';
+      console.log('[TURNSTILE] Container created with ID:', turnstileContainerId);
+    }
+
+    // Clear and render turnstile widget
+    const container = document.getElementById(turnstileContainerId);
+    console.log('[TURNSTILE] Container element found:', !!container);
+    console.log('[TURNSTILE] window.turnstile available:', typeof window.turnstile !== 'undefined');
+    
+    if (container && typeof window.turnstile !== 'undefined') {
+      try {
+        console.log('[TURNSTILE] Clearing container innerHTML');
+        container.innerHTML = ''; // Clear previous widget
+        console.log('[TURNSTILE] Calling window.turnstile.render...');
+        window.turnstile.render(`#${turnstileContainerId}`, {
+          sitekey: TURNSTILE_SITE_KEY,
+          theme: 'dark'
+        });
+        console.log('[TURNSTILE] Widget rendered successfully');
+      } catch (e) {
+        console.error('[TURNSTILE] Error rendering widget:', e);
+      }
+    } else {
+      console.warn('[TURNSTILE] Cannot render: container=' + !!container + ', turnstile=' + (typeof window.turnstile !== 'undefined'));
+    }
+  }
+
+  async function getAndValidateTurnstileToken() {
+    console.log('[TURNSTILE] getAndValidateTurnstileToken() called');
+    if (typeof window.turnstile === 'undefined') {
+      console.warn('[TURNSTILE] Turnstile library not loaded');
+      return null;
+    }
+    try {
+      console.log('[TURNSTILE] Calling window.turnstile.getResponse()');
+      const token = window.turnstile.getResponse();
+      console.log('[TURNSTILE] Token response:', token ? '(length=' + token.length + ')' : 'null/empty');
+      return token || null;
+    } catch (e) {
+      console.error('[TURNSTILE] Error getting token:', e);
+      return null;
+    }
+  }
+
+  function resetTurnstileWidget() {
+    console.log('[TURNSTILE] resetTurnstileWidget() called');
+    if (typeof window.turnstile !== 'undefined' && turnstileContainerId) {
+      try {
+        console.log('[TURNSTILE] Calling window.turnstile.reset()');
+        window.turnstile.reset(`#${turnstileContainerId}`);
+        console.log('[TURNSTILE] Widget reset successfully');
+      } catch (e) {
+        console.warn('[TURNSTILE] Failed to reset widget:', e);
+      }
+    } else {
+      console.warn('[TURNSTILE] Cannot reset: turnstile=' + (typeof window.turnstile !== 'undefined') + ', containerId=' + turnstileContainerId);
+    }
+  }
+
+  // Wrapper for Supabase auth calls to include Turnstile token in headers
+  async function callSupabaseAuthWithTurnstile(authFn) {
+    const token = await getAndValidateTurnstileToken();
+    const headers = {};
+    if (token) {
+      headers['cf-turnstile-token'] = token;
+    }
+    
+    // Call the auth function with custom headers injected
+    // Supabase client allows headers via the fetch options
+    return authFn(headers);
+  }
+
   /* ---------------- UI flows ---------------- */
 
   function showWelcome(){
@@ -110,7 +195,17 @@
     magic.onclick = ()=> showMagicLogin();
 
     const google = document.createElement('div'); google.className='option-item'; google.innerHTML = `<div><strong>Google</strong><div class="small muted">Sign in with Google</div></div><div><i class="fa-brands fa-google"></i></div>`;
-    google.onclick = async ()=>{ showMsg('Redirecting...'); const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' }); if(error) showMsg(error.message || 'Error'); };
+    google.onclick = async ()=>{ 
+      showMsg('Redirecting...'); 
+      try {
+        const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' }); 
+        if(error) {
+          showMsg(error.message || 'Error');
+        }
+      } catch(err) {
+        showMsg('Error: ' + err.message);
+      }
+    };
 
     list.append(pwd, magic, google);
     panel.append(h, list);
@@ -124,11 +219,60 @@
 
     const btn = document.createElement('button'); btn.className = 'btn primary'; btn.innerHTML = `<i class="fa-solid fa-key"></i> Sign in`;
     btn.onclick = async ()=> {
+      console.log('[AUTH] Password login clicked');
       showMsg('Signing in...');
-      const { data, error } = await supabase.auth.signInWithPassword({ email: email.input.value, password: pass.input.value });
-      if(error) showMsg(error.message || 'Sign in failed'); else { showMsg('Welcome back!'); await loadUserProfile(); }
+      
+      console.log('[TURNSTILE] Checking for token...');
+      const token = await getAndValidateTurnstileToken();
+      console.log('[TURNSTILE] Token retrieved:', token ? 'YES (length: ' + token.length + ')' : 'NO');
+      
+      if (!token) {
+        console.warn('[TURNSTILE] No token available, returning');
+        showMsg('Please complete the CAPTCHA');
+        return;
+      }
+
+      const emailVal = email.input.value;
+      const passVal = pass.input.value;
+      console.log('[AUTH] Attempting signInWithPassword with email:', emailVal);
+      console.log('[AUTH] Password length:', passVal.length);
+
+      try {
+        console.log('[AUTH] Calling supabase.auth.signInWithPassword...');
+        console.log('[AUTH] Token being passed:', token ? '(length=' + token.length + ')' : 'MISSING');
+        const { data, error } = await supabase.auth.signInWithPassword({ 
+          email: emailVal, 
+          password: passVal,
+          options: {
+            captchaToken: token
+          }
+        });
+        
+        console.log('[AUTH] Response received');
+        console.log('[AUTH] Data:', data);
+        console.log('[AUTH] Error:', error);
+        
+        if(error) {
+          console.error('[AUTH] Sign in error:', error.message);
+          showMsg(error.message || 'Sign in failed');
+          return;
+        }
+        
+        console.log('[AUTH] Sign in successful!');
+        showMsg('Welcome back!');
+        setTimeout(() => {
+          console.log('[AUTH] Loading user profile...');
+          loadUserProfile();
+        }, 500);
+      } catch(err) {
+        console.error('[AUTH] Exception caught:', err);
+        showMsg('Sign in error: ' + err.message);
+      }
     };
+    
+    // Add Turnstile widget AFTER form fields (at bottom)
     panel.append(h, email.row, pass.row, btn);
+    renderTurnstileWidget();
   }
 
   function showMagicLogin(){
@@ -138,11 +282,53 @@
 
     const btn = document.createElement('button'); btn.className='btn primary'; btn.innerHTML = `<i class="fa-regular fa-envelope"></i> Send Magic Link`;
     btn.onclick = async ()=> {
+      console.log('[AUTH] Magic link login clicked');
       showMsg('Sending magic link...');
-      const { data, error } = await supabase.auth.signInWithOtp({ email: email.input.value });
-      if(error) showMsg(error.message || 'Failed'); else showMsg('Check your email for the magic link.');
+      
+      console.log('[TURNSTILE] Checking for token...');
+      const token = await getAndValidateTurnstileToken();
+      console.log('[TURNSTILE] Token retrieved:', token ? 'YES (length: ' + token.length + ')' : 'NO');
+      
+      if (!token) {
+        console.warn('[TURNSTILE] No token available, returning');
+        showMsg('Please complete the CAPTCHA');
+        return;
+      }
+
+      const emailVal = email.input.value;
+      console.log('[AUTH] Attempting signInWithOtp with email:', emailVal);
+
+      try {
+        console.log('[AUTH] Calling supabase.auth.signInWithOtp...');
+        console.log('[AUTH] Token being passed:', token ? '(length=' + token.length + ')' : 'MISSING');
+        const { data, error } = await supabase.auth.signInWithOtp({ 
+          email: emailVal,
+          options: {
+            captchaToken: token
+          }
+        });
+        
+        console.log('[AUTH] Response received');
+        console.log('[AUTH] Data:', data);
+        console.log('[AUTH] Error:', error);
+        
+        if(error) {
+          console.error('[AUTH] OTP send error:', error.message);
+          showMsg(error.message || 'Failed');
+          return;
+        }
+        
+        console.log('[AUTH] Magic link sent successfully!');
+        showMsg('Check your email for the magic link.');
+      } catch(err) {
+        console.error('[AUTH] Exception caught:', err);
+        showMsg('Error: ' + err.message);
+      }
     };
+    
+    // Add Turnstile widget AFTER form fields (at bottom)
     panel.append(h, email.row, btn);
+    renderTurnstileWidget();
   }
 
   /* ---------- Signup ---------- */
@@ -150,6 +336,9 @@
   function showSignupForm(){
     clearPanel();
     const h = document.createElement('h1'); h.textContent = 'Create account';
+
+    // Auto-render Turnstile widget when signup form opens
+    renderTurnstileWidget();
 
     const username = createField('Username', 'username', 'text');
     const email = createField('Email', 'email', 'email');
@@ -213,36 +402,106 @@
     }
 
     signupBtn.onclick = async ()=>{
+      console.log('[AUTH] Sign up button clicked');
       showMsg('Checking inputs and creating account...');
       try {
+        console.log('[PROFANITY] Checking username...');
         const usernameCheck = await callProfanityApiWithTimeout(username.input.value,10000).catch(e=>{ throw { timeout:true }});
-        if(usernameCheck.isProfanity){ username.input.classList.add('input-error'); usernameError.style.display='block'; usernameError.textContent = "This username isn't appropriate for moonlight."; return; }
+        if(usernameCheck.isProfanity){ 
+          console.warn('[PROFANITY] Username flagged as inappropriate');
+          username.input.classList.add('input-error'); 
+          usernameError.style.display='block'; 
+          usernameError.textContent = "This username isn't appropriate for moonlight."; 
+          return; 
+        }
+        console.log('[PROFANITY] Username OK');
+        
         const bioVal = bio.input.value || '';
+        console.log('[PROFANITY] Checking bio...');
         const bioCheck = await callProfanityApiWithTimeout(bioVal,10000).catch(e=>{ throw { timeout:true }});
-        if(bioCheck.isProfanity){ bio.input.classList.add('input-error'); bioError.style.display='block'; bioError.textContent = "This bio isn't appropriate for moonlight."; return; }
+        if(bioCheck.isProfanity){ 
+          console.warn('[PROFANITY] Bio flagged as inappropriate');
+          bio.input.classList.add('input-error'); 
+          bioError.style.display='block'; 
+          bioError.textContent = "This bio isn't appropriate for moonlight."; 
+          return; 
+        }
+        console.log('[PROFANITY] Bio OK');
       } catch(err){
+        console.error('[PROFANITY] Error during profanity check:', err);
         showRoadblock('signup');
         return;
       }
 
+      console.log('[TURNSTILE] Checking for signup CAPTCHA token...');
+      const turnstileToken = await getAndValidateTurnstileToken();
+      console.log('[TURNSTILE] Token retrieved:', turnstileToken ? 'YES (length: ' + turnstileToken.length + ')' : 'NO');
+      if (!turnstileToken) {
+        console.warn('[TURNSTILE] No token available for signup');
+        showMsg('Please complete the CAPTCHA');
+        return;
+      }
+
       let avatarUrl = '';
-      if(fileRow.input.files[0]) avatarUrl = await fileToBase64(fileRow.input.files[0]);
-      else avatarUrl = `https://placehold.co/500x500/000/fff?text=${username.input.value[0] ? username.input.value[0].toUpperCase() : 'U'}`;
+      if(fileRow.input.files[0]) {
+        console.log('[PROFILE] Converting avatar to base64...');
+        avatarUrl = await fileToBase64(fileRow.input.files[0]);
+      } else {
+        console.log('[PROFILE] Using placeholder avatar');
+        avatarUrl = `https://placehold.co/500x500/000/fff?text=${username.input.value[0] ? username.input.value[0].toUpperCase() : 'U'}`;
+      }
 
-      const { data, error } = await supabase.auth.signUp({ email: email.input.value, password: password.input.value });
-      if(error){ showMsg(error.message || 'Sign up failed'); return; }
+      try {
+        const emailVal = email.input.value;
+        const passVal = password.input.value;
+        console.log('[AUTH] Calling supabase.auth.signUp with email:', emailVal);
+        console.log('[AUTH] Token being passed:', turnstileToken ? '(length=' + turnstileToken.length + ')' : 'MISSING');
+        const { data, error } = await supabase.auth.signUp({ 
+          email: emailVal, 
+          password: passVal,
+          options: {
+            captchaToken: turnstileToken
+          }
+        });
+        
+        console.log('[AUTH] signUp response received');
+        console.log('[AUTH] Data:', data);
+        console.log('[AUTH] Error:', error);
+        
+        if(error) {
+          console.error('[AUTH] Sign up error:', error.message);
+          showMsg(error.message || 'Sign up failed');
+          return;
+        }
 
-      const { error: profileError } = await supabase.from('profiles').insert([{
-        id: data.user.id,
-        username: username.input.value,
-        email: email.input.value,
-        bio: bio.input.value || '',
-        avatar_url: avatarUrl
-      }]);
-      if(profileError){ showMsg(profileError.message || 'Profile creation failed'); return; }
+        console.log('[PROFILE] Inserting profile for user:', data.user.id);
+        const { error: profileError } = await supabase.from('profiles').insert([{
+          id: data.user.id,
+          username: username.input.value,
+          email: emailVal,
+          bio: bio.input.value || '',
+          avatar_url: avatarUrl
+        }]);
+        
+        console.log('[PROFILE] Insert response received');
+        console.log('[PROFILE] Error:', profileError);
+        
+        if(profileError) {
+          console.error('[PROFILE] Profile creation error:', profileError.message);
+          showMsg(profileError.message || 'Profile creation failed');
+          return;
+        }
 
-      showMsg('Account created — welcome!');
-      await loadUserProfile();
+        console.log('[AUTH] Account created successfully!');
+        showMsg('Account created — welcome!');
+        setTimeout(() => {
+          console.log('[AUTH] Loading user profile...');
+          loadUserProfile();
+        }, 500);
+      } catch(err) {
+        console.error('[AUTH] Exception caught during signup:', err);
+        showMsg('Error: ' + err.message);
+      }
     };
 
     panel.append(h, username.row, email.row, password.row, dob.row, bio.row, fileRow.row, signupBtn);
@@ -303,16 +562,28 @@
       let avatarUrl = currentProfile.avatar_url || '';
       if(fileRow.input.files[0]) avatarUrl = await fileToBase64(fileRow.input.files[0]);
 
-      const { error } = await supabase.from('profiles').update({
-        username: username.input.value,
-        bio: bio.input.value || '',
-        avatar_url: avatarUrl
-      }).eq('id', currentProfile.id);
+      try {
+        const { error } = await supabase.from('profiles').update({
+          username: username.input.value,
+          bio: bio.input.value || '',
+          avatar_url: avatarUrl
+        }).eq('id', currentProfile.id);
 
-      if(error){ savingMsg.textContent = 'Failed to update profile'; savingMsg.style.color = 'var(--danger)'; setTimeout(()=>savingMsg.remove(),3000); return; }
+        if(error) {
+          savingMsg.textContent = 'Failed to update profile'; 
+          savingMsg.style.color = 'var(--danger)'; 
+          setTimeout(()=>savingMsg.remove(),3000);
+          return;
+        }
 
-      savingMsg.textContent = 'Profile updated successfully!'; savingMsg.style.color = 'var(--success)';
-      setTimeout(()=>{ savingMsg.remove(); loadUserProfile(); }, 1200);
+        savingMsg.textContent = 'Profile updated successfully!';
+        savingMsg.style.color = 'var(--success)';
+        setTimeout(()=>{ savingMsg.remove(); loadUserProfile(); }, 1200);
+      } catch(err) {
+        savingMsg.textContent = 'Error: ' + err.message;
+        savingMsg.style.color = 'var(--danger)';
+        setTimeout(()=>savingMsg.remove(),3000);
+      }
     };
 
     panel.append(h, username.row, bio.row, fileRow.row, saveBtn, cancelBtn);

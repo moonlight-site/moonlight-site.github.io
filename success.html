@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Success • Moonlight</title>
+
+    <style>
+        body {
+            margin: 0;
+            background: #0b0b10;
+            color: #f2f2f7;
+            font-family: "Inter", sans-serif;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card {
+            width: 90%;
+            max-width: 420px;
+            padding: 32px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 18px;
+            backdrop-filter: blur(12px);
+            text-align: center;
+            animation: fadeIn 0.35s ease;
+        }
+
+        .icon {
+            font-size: 40px;
+            margin-bottom: 14px;
+            color: #a3baff;
+        }
+
+        h1 {
+            font-size: 22px;
+            font-weight: 600;
+            margin: 0 0 8px;
+        }
+
+        p {
+            margin: 6px 0;
+            opacity: 0.8;
+            font-size: 14px;
+        }
+
+        .redirect {
+            margin-top: 16px;
+            font-size: 12px;
+            opacity: 0.6;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <div class="icon">✔️</div>
+        <h1>Success</h1>
+        <p>Your action has been completed.</p>
+        <p class="redirect">Redirecting in a moment…</p>
+    </div>
+
+    <!-- chip.js -->
+    <script src="/chip.js"></script>
+
+    <!-- Redirect (change / to whatever page) -->
+    <script>
+        setTimeout(() => {
+            window.location.href = "/home";
+        }, 2500);
+    </script>
+
+</body>
+</html>

@@ -9,6 +9,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.head.appendChild(faLink);
   }
 
+  // ---- Inject Cloudflare Turnstile bot protection ----
+  if (!document.querySelector('script[data-turnstile-injected]')) {
+    const turnstileScript = document.createElement('script');
+    turnstileScript.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+    turnstileScript.setAttribute('data-turnstile-injected', '1');
+    turnstileScript.async = true;
+    turnstileScript.defer = true;
+    document.head.appendChild(turnstileScript);
+  }
+
+  // ---- Global Turnstile token getter ----
+  window.getTurnstileToken = async () => {
+    if (typeof window.turnstile === 'undefined') {
+      console.warn('Turnstile not loaded yet');
+      return null;
+    }
+    try {
+      const token = window.turnstile.getResponse();
+      if (!token) {
+        console.warn('Turnstile token not available; widget may not be rendered');
+      }
+      return token || null;
+    } catch (e) {
+      console.error('Error getting Turnstile token:', e);
+      return null;
+    }
+  };
+
   // ---- Create Navbar Chip (Left) ----
   const navbarWrapper = document.createElement('div');
   navbarWrapper.id = 'chip-navbar-wrapper';
@@ -171,24 +199,40 @@ document.addEventListener('DOMContentLoaded', async () => {
       const supabaseUrl = 'https://mrkhmlhrbtedudclwfli.supabase.co';
       const supabaseKey = 'sb_publishable_Ej0sVQdRrHnWnctlZxWI3g_djchZi4L';
       // window.supabase is the UMD namespace from the bundle; createClient exists there
-      if (!window.supabase || typeof window.supabase.createClient !== 'function') return false;
+      console.log('[SUPABASE] Checking if window.supabase is available:', !!window.supabase);
+      console.log('[SUPABASE] Checking if createClient exists:', window.supabase && typeof window.supabase.createClient === 'function');
+      
+      if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+        console.error('[SUPABASE] Supabase UMD not ready');
+        return false;
+      }
+      
+      console.log('[SUPABASE] Creating client...');
       window.supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+      console.log('[SUPABASE] Client created:', !!window.supabaseClient);
+      
       // dispatch ready event with client in detail
+      console.log('[SUPABASE] Dispatching supabase-ready event...');
       window.dispatchEvent(new CustomEvent('supabase-ready', { detail: { client: window.supabaseClient } }));
+      
       // also attempt to load profile using global client
-      loadProfile().catch(e => console.error('Profile chip load error:', e));
+      console.log('[SUPABASE] Loading profile...');
+      loadProfile().catch(e => console.error('[SUPABASE] Profile chip load error:', e));
       return true;
     } catch (e) {
-      console.error('createAndDispatchClient error', e);
+      console.error('[SUPABASE] createAndDispatchClient error', e);
       return false;
     }
   }
 
   // If UMD is already present, create client immediately
+  console.log('[SUPABASE] Checking if UMD is already loaded...');
   if (window.supabase && typeof window.supabase.createClient === 'function') {
+    console.log('[SUPABASE] UMD already available, creating client immediately');
     createAndDispatchClient();
   } else {
     // inject UMD bundle and create client when loaded
+    console.log('[SUPABASE] UMD not available, injecting bundle...');
     const existing = document.querySelector('script[data-supabase-umd]');
     if (!existing) {
       const s = document.createElement('script');
@@ -197,13 +241,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       s.setAttribute('data-supabase-umd', '1');
       s.onload = () => {
         // small delay to allow UMD to initialize
+        console.log('[SUPABASE] UMD bundle loaded');
         setTimeout(() => createAndDispatchClient(), 20);
       };
-      s.onerror = (e) => console.error('Failed to load Supabase UMD bundle', e);
+      s.onerror = (e) => console.error('[SUPABASE] Failed to load Supabase UMD bundle', e);
       document.head.appendChild(s);
     } else {
       // already loading; watch for ready
-      existing.addEventListener('load', () => setTimeout(() => createAndDispatchClient(), 20));
+      console.log('[SUPABASE] UMD script already in DOM, waiting for load...');
+      existing.addEventListener('load', () => {
+        console.log('[SUPABASE] UMD script load event fired');
+        setTimeout(() => createAndDispatchClient(), 20);
+      });
     }
   }
 
