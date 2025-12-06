@@ -49,6 +49,63 @@
 
   function debounce(fn, wait=300){ let t; return (...args)=>{ clearTimeout(t); t = setTimeout(()=>fn(...args), wait); }; }
 
+  function validatePassword(password) {
+    const errors = [];
+    
+    if (password.length < 8) {
+      errors.push('Password must be at least 8 characters');
+    }
+    
+    if (!/[A-Z]/.test(password)) {
+      errors.push('Password must contain an uppercase letter');
+    }
+    
+    if (!/[a-z]/.test(password)) {
+      errors.push('Password must contain a lowercase letter');
+    }
+    
+    if (!/[0-9]/.test(password)) {
+      errors.push('Password must contain at least one number');
+    }
+    
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+      errors.push('Password must contain at least one symbol (!@#$%^&* etc)');
+    }
+    
+    return {
+      valid: errors.length === 0,
+      errors: errors
+    };
+  }
+
+  function validateEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  }
+
+  function validateProfilePicture(file) {
+    if (!file) {
+      return { valid: true, message: '' }; // Optional field
+    }
+    
+    const allowedTypes = ['image/png', 'image/jpeg'];
+    const allowedExtensions = ['.png', '.jpg', '.jpeg'];
+    
+    // Check MIME type
+    if (!allowedTypes.includes(file.type)) {
+      return { valid: false, message: 'Profile picture must be PNG or JPG only (no GIFs)' };
+    }
+    
+    // Check file extension
+    const fileName = file.name.toLowerCase();
+    const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
+    if (!hasValidExtension) {
+      return { valid: false, message: 'Profile picture must be PNG or JPG only (no GIFs)' };
+    }
+    
+    return { valid: true, message: '' };
+  }
+
   async function callProfanityApiWithTimeout(message, timeoutMs = 10000){
     const controller = new AbortController();
     const timer = setTimeout(()=>controller.abort(), timeoutMs);
@@ -371,10 +428,16 @@
 
     const ageError = document.createElement('div'); ageError.className='error'; ageError.textContent = "You aren't old enough to use moonlight.";
     const usernameError = document.createElement('div'); usernameError.className='error'; usernameError.textContent = "This username isn't appropriate for moonlight.";
+    const emailError = document.createElement('div'); emailError.className='error'; emailError.textContent = "Please enter a valid email address.";
     const bioError = document.createElement('div'); bioError.className='error'; bioError.textContent = "This bio isn't appropriate for moonlight.";
+    const passwordError = document.createElement('div'); passwordError.className='error'; passwordError.innerHTML = '';
+    const fileError = document.createElement('div'); fileError.className='error'; fileError.textContent = "Profile picture must be PNG or JPG only (no GIFs).";
 
     username.row.append(usernameError);
+    email.row.append(emailError);
+    password.row.append(passwordError);
     bio.row.append(bioError);
+    fileRow.row.append(fileError);
     dob.row.append(ageError);
 
     const signupBtn = document.createElement('button'); signupBtn.className='btn primary'; signupBtn.textContent='Sign Up';
@@ -383,17 +446,160 @@
     let usernameBad = true;
     let bioBad = false;
     let ageOkay = false;
+    let passwordBad = true;
+    let emailBad = true;
+    let fileBad = false;
+
+    const checkFileDebounced = debounce(() => {
+      const file = fileRow.input.files[0];
+      const validation = validateProfilePicture(file);
+      
+      if (!validation.valid) {
+        fileBad = true;
+        fileRow.input.classList.add('input-error');
+        fileError.style.display = 'block';
+        fileError.textContent = validation.message;
+      } else {
+        fileBad = false;
+        fileRow.input.classList.remove('input-error');
+        fileError.style.display = 'none';
+      }
+      
+      updateSignupState();
+    }, 300);
+
+    fileRow.input.addEventListener('change', checkFileDebounced);
+
+    const checkEmailDebounced = debounce((val) => {
+      if (!validateEmail(val)) {
+        emailBad = true;
+        email.input.classList.add('input-error');
+        emailError.style.display = 'block';
+      } else {
+        emailBad = false;
+        email.input.classList.remove('input-error');
+        emailError.style.display = 'none';
+      }
+      
+      updateSignupState();
+    }, 350);
+
+    email.input.addEventListener('input', e => checkEmailDebounced(e.target.value));
+
+    const checkPasswordDebounced = debounce((val) => {
+      const validation = validatePassword(val);
+      
+      if (!validation.valid) {
+        passwordBad = true;
+        password.input.classList.add('input-error');
+        passwordError.style.display = 'block';
+        passwordError.innerHTML = validation.errors.map(e => `<div>${e}</div>`).join('');
+      } else {
+        passwordBad = false;
+        password.input.classList.remove('input-error');
+        passwordError.style.display = 'none';
+      }
+      
+      updateSignupState();
+    }, 350);
+
+    password.input.addEventListener('input', e => checkPasswordDebounced(e.target.value));
+
+    // Comprehensive username validation
+    async function validateUsername(val) {
+      const trimmed = val.trim();
+      
+      // Check if empty
+      if (!trimmed) {
+        return { valid: false, message: 'Enter a username' };
+      }
+      
+      // Check length (3-20 characters)
+      if (trimmed.length < 3) {
+        return { valid: false, message: 'Username must be at least 3 characters' };
+      }
+      if (trimmed.length > 20) {
+        return { valid: false, message: 'Username must be 20 characters or less' };
+      }
+      
+      // Check if starts/ends with space (trim would have removed outer spaces already checked above)
+      if (val.startsWith(' ') || val.endsWith(' ')) {
+        return { valid: false, message: 'Username cannot start or end with a space' };
+      }
+      
+      // Check if only spaces
+      if (trimmed.length === 0) {
+        return { valid: false, message: 'Username cannot be only spaces' };
+      }
+      
+      // Check for valid characters (letters, numbers, spaces, dots, underscores - no symbols/emojis)
+      const validCharRegex = /^[a-zA-Z0-9 ._]+$/;
+      if (!validCharRegex.test(trimmed)) {
+        return { valid: false, message: 'Username can only contain letters, numbers, spaces, dots, and underscores' };
+      }
+      
+      // Check if starts and ends with letter or number
+      const startsWithValid = /^[a-zA-Z0-9]/.test(trimmed);
+      const endsWithValid = /[a-zA-Z0-9]$/.test(trimmed);
+      if (!startsWithValid || !endsWithValid) {
+        return { valid: false, message: 'Username must start and end with a letter or number' };
+      }
+      
+      // Check if username is taken
+      try {
+        const { data: existingUser, error } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('username', trimmed)
+          .single();
+        
+        if (existingUser) {
+          return { valid: false, message: 'This username is taken' };
+        }
+      } catch (err) {
+        // If error is "not found" (PGRST116), username is available
+        // Other errors we'll treat as a temporary issue
+        if (err.code && err.code !== 'PGRST116') {
+          console.error('[USERNAME] Availability check error:', err);
+        }
+      }
+      
+      return { valid: true, message: '' };
+    }
 
     const checkUsernameDebounced = debounce(async (val) => {
-      if(!val || val.trim().length<1){ usernameBad=true; username.input.classList.add('input-error'); usernameError.style.display='block'; usernameError.textContent='Enter a username'; updateSignupState(); return; }
-      try {
-        const result = await callProfanityApiWithTimeout(val,7000);
-        if(result.isProfanity){ usernameBad=true; username.input.classList.add('input-error'); usernameError.style.display='block'; usernameError.textContent="This username isn't appropriate for moonlight."; }
-        else { usernameBad=false; username.input.classList.remove('input-error'); usernameError.style.display='none'; }
-      } catch(err){
-        usernameBad=false; username.input.classList.remove('input-error'); usernameError.style.display='none';
-      } finally { updateSignupState(); }
-    }, 350);
+      const validation = await validateUsername(val);
+      
+      if (!validation.valid) {
+        usernameBad = true;
+        username.input.classList.add('input-error');
+        usernameError.style.display = 'block';
+        usernameError.textContent = validation.message;
+      } else {
+        // Format validation passed, now check profanity
+        try {
+          const profanityCheck = await callProfanityApiWithTimeout(val, 7000);
+          if (profanityCheck.isProfanity) {
+            usernameBad = true;
+            username.input.classList.add('input-error');
+            usernameError.style.display = 'block';
+            usernameError.textContent = "This username isn't appropriate for moonlight.";
+          } else {
+            usernameBad = false;
+            username.input.classList.remove('input-error');
+            usernameError.style.display = 'none';
+          }
+        } catch (err) {
+          // If profanity check fails, allow it through
+          console.warn('[PROFANITY] Username profanity check error:', err);
+          usernameBad = false;
+          username.input.classList.remove('input-error');
+          usernameError.style.display = 'none';
+        }
+      }
+      
+      updateSignupState();
+    }, 500);
 
     const checkBioDebounced = debounce(async (val) => {
       if(!val || val.trim().length===0){ bioBad=false; bio.input.classList.remove('input-error'); bioError.style.display='none'; updateSignupState(); return; }
@@ -418,7 +624,7 @@
     bio.input.addEventListener('input', e=> checkBioDebounced(e.target.value));
 
     function updateSignupState(){
-      const baseOk = email.input.value.trim().length>3 && password.input.value.trim().length>=6 && ageOkay && !usernameBad && !bioBad;
+      const baseOk = !emailBad && !passwordBad && ageOkay && !usernameBad && !bioBad && !fileBad;
       signupBtn.disabled = !baseOk;
       signupBtn.style.opacity = baseOk ? '1' : '0.7';
     }
@@ -427,26 +633,77 @@
       console.log('[AUTH] Sign up button clicked');
       showMsg('Checking inputs and creating account...');
       try {
+        console.log('[EMAIL] Validating email format...');
+        if (!validateEmail(email.input.value)) {
+          console.warn('[EMAIL] Invalid email format');
+          email.input.classList.add('input-error');
+          emailError.style.display = 'block';
+          emailError.textContent = 'Please enter a valid email address';
+          showMsg('Please fix the errors below');
+          return;
+        }
+        console.log('[EMAIL] Email format OK');
+        
+        console.log('[FILE] Validating profile picture...');
+        const fileValidation = validateProfilePicture(fileRow.input.files[0]);
+        if (!fileValidation.valid) {
+          console.warn('[FILE] Invalid profile picture:', fileValidation.message);
+          fileRow.input.classList.add('input-error');
+          fileError.style.display = 'block';
+          fileError.textContent = fileValidation.message;
+          showMsg('Please fix the errors below');
+          return;
+        }
+        console.log('[FILE] Profile picture validation OK');
+        
+        console.log('[AUTH] Validating username format...');
+        const usernameValidation = await validateUsername(username.input.value);
+        if (!usernameValidation.valid) {
+          console.warn('[USERNAME] Validation failed:', usernameValidation.message);
+          username.input.classList.add('input-error');
+          usernameError.style.display = 'block';
+          usernameError.textContent = usernameValidation.message;
+          showMsg('Please fix the errors below');
+          return;
+        }
+        console.log('[USERNAME] Format validation OK');
+        
+        console.log('[AUTH] Validating password strength...');
+        const passwordValidation = validatePassword(password.input.value);
+        if (!passwordValidation.valid) {
+          console.warn('[PASSWORD] Validation failed:', passwordValidation.errors);
+          password.input.classList.add('input-error');
+          passwordError.style.display = 'block';
+          passwordError.innerHTML = passwordValidation.errors.map(e => `<div>${e}</div>`).join('');
+          showMsg('Please fix the errors below');
+          return;
+        }
+        console.log('[PASSWORD] Strength validation OK');
+        
         console.log('[PROFANITY] Checking username...');
         const usernameCheck = await callProfanityApiWithTimeout(username.input.value,10000).catch(e=>{ throw { timeout:true }});
         if(usernameCheck.isProfanity){ 
           console.warn('[PROFANITY] Username flagged as inappropriate');
           username.input.classList.add('input-error'); 
-          usernameError.style.display='block'; 
+          usernameError.style.display = 'block'; 
           usernameError.textContent = "This username isn't appropriate for moonlight."; 
+          showMsg('Please fix the errors below');
           return; 
         }
         console.log('[PROFANITY] Username OK');
         
         const bioVal = bio.input.value || '';
         console.log('[PROFANITY] Checking bio...');
-        const bioCheck = await callProfanityApiWithTimeout(bioVal,10000).catch(e=>{ throw { timeout:true }});
-        if(bioCheck.isProfanity){ 
-          console.warn('[PROFANITY] Bio flagged as inappropriate');
-          bio.input.classList.add('input-error'); 
-          bioError.style.display='block'; 
-          bioError.textContent = "This bio isn't appropriate for moonlight."; 
-          return; 
+        if (bioVal && bioVal.trim().length > 0) {
+          const bioCheck = await callProfanityApiWithTimeout(bioVal,10000).catch(e=>{ throw { timeout:true }});
+          if(bioCheck.isProfanity){ 
+            console.warn('[PROFANITY] Bio flagged as inappropriate');
+            bio.input.classList.add('input-error'); 
+            bioError.style.display='block'; 
+            bioError.textContent = "This bio isn't appropriate for moonlight."; 
+            showMsg('Please fix the errors below');
+            return; 
+          }
         }
         console.log('[PROFANITY] Bio OK');
       } catch(err){
@@ -774,6 +1031,8 @@
         console.log('[OAUTH] Profile created successfully for user:', username);
       } else {
         console.log('[OAUTH] Existing profile found:', profile.username);
+        console.log('[OAUTH] User successfully signed in with Google:', session.user.email);
+        
       }
       
       return true;

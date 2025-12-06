@@ -269,7 +269,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           const img = profileWrapper.querySelector('.chip-img');
           const username = profileWrapper.querySelector('.username');
           username.textContent = profile.username || 'User';
-          img.src = profile.profile_picture || `https://placehold.co/40x40/000/fff?text=${(profile.username||'U')[0].toUpperCase()}`;
+          img.src = profile.avatar_url || `https://placehold.co/40x40/000/fff?text=${(profile.username||'U')[0].toUpperCase()}`;
         }
       }
     } catch (e) {
