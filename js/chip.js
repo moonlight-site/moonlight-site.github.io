@@ -161,23 +161,61 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupChip(navbarWrapper);
   setupChip(profileWrapper);
 
-  // ---- Load profile from Supabase ----
-  if (!window.supabase) {
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
-    script.onload = loadProfile;
-    document.head.appendChild(script);
-  } else loadProfile();
+  // ---- Supabase UMD loader + global client ----
+  // We'll inject the Supabase UMD script once (if not present), create a global
+  // `window.supabaseClient` (UMD client), and dispatch a `supabase-ready` event so
+  // other modules can use the client instead of importing/creating their own.
 
-  async function loadProfile() {
+  function createAndDispatchClient() {
     try {
       const supabaseUrl = 'https://mrkhmlhrbtedudclwfli.supabase.co';
       const supabaseKey = 'sb_publishable_Ej0sVQdRrHnWnctlZxWI3g_djchZi4L';
-      const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+      // window.supabase is the UMD namespace from the bundle; createClient exists there
+      if (!window.supabase || typeof window.supabase.createClient !== 'function') return false;
+      window.supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+      // dispatch ready event with client in detail
+      window.dispatchEvent(new CustomEvent('supabase-ready', { detail: { client: window.supabaseClient } }));
+      // also attempt to load profile using global client
+      loadProfile().catch(e => console.error('Profile chip load error:', e));
+      return true;
+    } catch (e) {
+      console.error('createAndDispatchClient error', e);
+      return false;
+    }
+  }
 
+  // If UMD is already present, create client immediately
+  if (window.supabase && typeof window.supabase.createClient === 'function') {
+    createAndDispatchClient();
+  } else {
+    // inject UMD bundle and create client when loaded
+    const existing = document.querySelector('script[data-supabase-umd]');
+    if (!existing) {
+      const s = document.createElement('script');
+      // load the canonical Supabase build from jsdelivr
+      s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+      s.setAttribute('data-supabase-umd', '1');
+      s.onload = () => {
+        // small delay to allow UMD to initialize
+        setTimeout(() => createAndDispatchClient(), 20);
+      };
+      s.onerror = (e) => console.error('Failed to load Supabase UMD bundle', e);
+      document.head.appendChild(s);
+    } else {
+      // already loading; watch for ready
+      existing.addEventListener('load', () => setTimeout(() => createAndDispatchClient(), 20));
+    }
+  }
+
+  // loadProfile now uses the global window.supabaseClient if available
+  async function loadProfile() {
+    try {
+      const supabase = window.supabaseClient;
+      if (!supabase) return;
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+        const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+        if (error) throw error;
         if (profile) {
           const img = profileWrapper.querySelector('.chip-img');
           const username = profileWrapper.querySelector('.username');
@@ -311,12 +349,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Example notifications on page load
   window.addEventListener('DOMContentLoaded', () => {
-    showMoonNotification({
-      title: 'Welcome!',
-      body: 'You have successfully signed in.',
-      icon: 'fa-solid fa-moon',
-      duration: 4000
-    });
+    //showMoonNotification({
+     // title: 'Welcome!',
+     // body: 'You have successfully signed in.',
+      //icon: 'fa-solid fa-moon',
+      //duration: 4000
+  //  });
 
     showMoonNotification({
       id: 'update-1',

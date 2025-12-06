@@ -1,8 +1,20 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+// Supabase client will be provided globally by `chip.js` as window.supabaseClient.
+// We wait for it (or the 'supabase-ready' event) and then proceed.
+let supabase = null;
+let _clientReady = false;
+const _onClientReadyQueue = [];
+function onClientReady(cb){ if(_clientReady) cb(); else _onClientReadyQueue.push(cb); }
 
-const supabaseUrl = 'https://mrkhmlhrbtedudclwfli.supabase.co'; // replace if needed
-const supabaseKey = 'sb_publishable_Ej0sVQdRrHnWnctlZxWI3g_djchZi4L'; // replace if needed
-const supabase = createClient(supabaseUrl, supabaseKey);
+if (window.supabaseClient) {
+  supabase = window.supabaseClient;
+  _clientReady = true;
+} else {
+  window.addEventListener('supabase-ready', (e)=>{
+    supabase = (e && e.detail && e.detail.client) || window.supabaseClient || null;
+    _clientReady = !!supabase;
+    while(_onClientReadyQueue.length) { const fn = _onClientReadyQueue.shift(); try{ fn(); }catch(e){console.error(e);} }
+  }, { once: true });
+}
 
 /* state */
 let games = [];
@@ -241,30 +253,33 @@ async function toggleFavorite(game, favBtn, favChip) {
       userFavorites = userFavorites.filter(id => id !== game.id);
       favBtn.innerHTML = '<i class="fa-regular fa-heart"></i>';
     }
-    // refresh UI counts from games array
+    // refresh UI counts from games array (client handled at module top)
     renderGrid();
   } finally {
     favLock.delete(game.id);
   }
-}
 
+}
+/* events */
 /* events */
 searchInput.addEventListener('input', () => { applyFilters(); });
 sortSelect.addEventListener('change', () => { applyFilters(); });
 
-/* initial load */
-await loadData();
+/* initial load: wait for supabase client to be ready */
+onClientReady(async ()=>{
+  try { await loadData(); } catch(e){ console.error('loadData failed', e); }
 
-/* listen to auth changes to update favorites when user logs in/out */
-supabase.auth.onAuthStateChange(async () => {
-  const s = await supabase.auth.getSession();
-  currentUserId = s.data.session?.user?.id || null;
-  // reload favorites if logged in
-  if (currentUserId) {
-    const favRes = await supabase.from('favorites').select('favorites').eq('id', currentUserId).single();
-    userFavorites = favRes && favRes.data ? favRes.data.favorites || [] : [];
-  } else {
-    userFavorites = [];
-  }
-  applyFilters();
+  /* listen to auth changes to update favorites when user logs in/out */
+  supabase.auth.onAuthStateChange(async () => {
+    const s = await supabase.auth.getSession();
+    currentUserId = s.data.session?.user?.id || null;
+    // reload favorites if logged in
+    if (currentUserId) {
+      const favRes = await supabase.from('favorites').select('favorites').eq('id', currentUserId).single();
+      userFavorites = favRes && favRes.data ? favRes.data.favorites || [] : [];
+    } else {
+      userFavorites = [];
+    }
+    applyFilters();
+  });
 });

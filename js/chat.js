@@ -6,13 +6,23 @@
   - signed-out => show unclosable roadblock modal
 --------------------------- */
 
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+// Supabase client is provided globally by `chip.js` as window.supabaseClient.
+// Wait for it (or the 'supabase-ready' event) and then proceed.
+let supabase = null;
+let _clientReady = false;
+const _onClientReadyQueue = [];
+function onClientReady(cb){ if(_clientReady) cb(); else _onClientReadyQueue.push(cb); }
 
-// --- CONFIG: replace if you want to use other keys
-const SUPABASE_URL = 'https://mrkhmlhrbtedudclwfli.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_Ej0sVQdRrHnWnctlZxWI3g_djchZi4L';
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+if (window.supabaseClient) {
+  supabase = window.supabaseClient;
+  _clientReady = true;
+} else {
+  window.addEventListener('supabase-ready', (e)=>{
+    supabase = (e && e.detail && e.detail.client) || window.supabaseClient || null;
+    _clientReady = !!supabase;
+    while(_onClientReadyQueue.length) { const fn = _onClientReadyQueue.shift(); try{ fn(); }catch(e){console.error(e);} }
+  }, { once: true });
+}
 
 const messagesEl = document.getElementById('messages');
 const inputEl = document.getElementById('messageInput');
@@ -352,5 +362,7 @@ function panelAppendTemp(el){
   setTimeout(()=>el.remove(),2500);
 }
 
-/* start */
-checkAuthAndInit();
+/* start: wait for supabase client to be ready */
+onClientReady(() => {
+  try { checkAuthAndInit(); } catch(e){ console.error('chat init failed', e); }
+});

@@ -1,8 +1,20 @@
-  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+  // Supabase client is provided globally by `chip.js` as window.supabaseClient.
+  // Wait for it (or the 'supabase-ready' event) and then proceed.
+  let supabase = null;
+  let _clientReady = false;
+  const _onClientReadyQueue = [];
+  function onClientReady(cb){ if(_clientReady) cb(); else _onClientReadyQueue.push(cb); }
 
-  const supabaseUrl = 'https://mrkhmlhrbtedudclwfli.supabase.co';
-  const supabaseKey = 'sb_publishable_Ej0sVQdRrHnWnctlZxWI3g_djchZi4L';
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  if (window.supabaseClient) {
+    supabase = window.supabaseClient;
+    _clientReady = true;
+  } else {
+    window.addEventListener('supabase-ready', (e)=>{
+      supabase = (e && e.detail && e.detail.client) || window.supabaseClient || null;
+      _clientReady = !!supabase;
+      while(_onClientReadyQueue.length) { const fn = _onClientReadyQueue.shift(); try{ fn(); }catch(e){console.error(e);} }
+    }, { once: true });
+  }
 
   const panel = document.getElementById('panel');
   const roadblock = document.getElementById('roadblock');
@@ -416,9 +428,11 @@
 
   /* ---------- init ---------- */
 
-  supabase.auth.onAuthStateChange((event, session) => { loadUserProfile(); });
-
-  (async ()=> {
-    const s = await supabase.auth.getSession();
-    if(s.data.session) await loadUserProfile(); else showWelcome();
-  })();
+  // Start auth flows only after supabase client is ready
+  onClientReady(async ()=>{
+    try { supabase.auth.onAuthStateChange((event, session) => { loadUserProfile(); }); } catch(e){ console.error('auth onAuthStateChange bind failed', e); }
+    try {
+      const s = await supabase.auth.getSession();
+      if(s.data.session) await loadUserProfile(); else showWelcome();
+    } catch(err){ console.error('failed initial auth check', err); showWelcome(); }
+  });
