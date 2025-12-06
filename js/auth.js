@@ -272,6 +272,15 @@
         }
         
         console.log('[AUTH] Sign in successful!');
+            showMoonNotification({
+      id: 'welcome',
+      title: 'Welcome',
+      body: 'You\'ve signed in successfully.',
+      icon: 'fa-solid fa-lock',
+      closable: true,
+      persistent: false,
+      duration: 7000 // stays until manually closed
+    });
         showMsg('Welcome back!');
         setTimeout(() => {
           console.log('[AUTH] Loading user profile...');

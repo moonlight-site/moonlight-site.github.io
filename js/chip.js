@@ -406,11 +406,11 @@ document.addEventListener('DOMContentLoaded', () => {
   //  });
 
     showMoonNotification({
-      id: 'update-1',
-      title: 'Update Available',
-      body: 'A new feature is ready!',
+      id: 'beta',
+      title: 'Moonlight Beta',
+      body: 'Moonlight is still in beta, expect bugs and missing features.',
       icon: 'fa-solid fa-circle-info',
-      closable: true,
+      closable: false,
       persistent: true,
       duration: 0 // stays until manually closed
     });
