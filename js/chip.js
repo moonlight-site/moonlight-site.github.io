@@ -612,3 +612,201 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 });
+
+
+/**
+ * --- START OF SETTINGS LOGIC FOR CHIP.JS ---
+ * Fetches, caches, and applies user settings globally.
+ */
+
+// Global cache for settings (initialized to defaults)
+window.moonlightSettings = {
+    // Cloak defaults
+    cloak_type: 'off',
+    cloak_preset: null,
+    cloak_custom_title: null,
+    cloak_custom_favicon: null,
+    // Security defaults
+    anti_tab_close: false,
+    panic_key_enabled: false,
+    panic_key_code: 123, // F12
+    panic_key_target: 'https://www.google.com',
+};
+
+async function fetchAndApplySettings() {
+    // Wait for Supabase client to be ready
+    if (!window.supabaseClient) {
+        await new Promise(resolve => window.addEventListener('supabase-ready', resolve, { once: true }));
+    }
+    const supabase = window.supabaseClient;
+
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    // Only fetch settings if a user is logged in
+    if (session) {
+        try {
+            const { data, error } = await supabase
+                .from('user_settings')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
+
+            if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows found", which is fine for new users
+                throw error;
+            }
+
+            if (data) {
+                // Merge fetched settings into the global cache
+                window.moonlightSettings = { ...window.moonlightSettings, ...data };
+            }
+
+        } catch (e) {
+            console.warn('Failed to fetch user settings:', e);
+            // Will continue with default settings
+        }
+    }
+
+    // Apply the settings immediately after fetch (or using defaults/cache)
+    applySettings();
+}
+
+function applySettings() {
+    const settings = window.moonlightSettings;
+    
+   // --- 1. Tab Cloak Logic ---
+let title = 'moonlight — your internet, your rules.';
+let favicon = '/branding/favicon.png';
+
+// 🛑 FIX: If cloak is OFF, stop execution here to keep the page's original title/favicon.
+if (settings.cloak_type === 'off') {
+    console.log('[CLOAK] Cloak is off. Skipping title/favicon modification.');
+    return; // Exit the cloaking function immediately.
+}
+
+if (settings.cloak_type === 'preset') {
+    switch (settings.cloak_preset) {
+        // --- NEW PRESETS ---
+        case 'gdoc':
+            title = 'Untitled document - Google Docs';
+            favicon = '/uploads/cloaks/gdocs.png';
+            break;
+        case 'gslides':
+            title = 'Untitled presentation - Google Slides';
+            favicon = '/uploads/cloaks/gslides.png';
+            break;
+        case 'gsheets':
+            title = 'Untitled spreadsheet - Google Sheets';
+            favicon = '/uploads/cloaks/gsheets.png';
+            break;
+        case 'desmoscalc':
+            title = 'Desmos | Scientific Calculator';
+            favicon = '/uploads/cloaks/desmos.png';
+            break;
+        case 'gdrive':
+            title = 'Google Drive';
+            favicon = '/uploads/cloaks/gdrive.png';
+            break;
+        case 'gassign':
+            title = 'Google Assignments';
+            favicon = '/uploads/cloaks/gassign.png';
+            break;
+        case 'blank':
+            title = '\u200B'; // Transparent character
+            favicon = '/uploads/cloaks/transparent.png';
+            break;
+
+        // --- EXISTING PRESETS (Updated) ---
+        case 'google':
+            title = 'Google';
+            favicon = 'https://www.google.com/favicon.ico';
+            break;
+        case 'calculator':
+            title = 'Calculator - Google Search';
+            favicon = '/uploads/cloaks/google.png'; // Reusing Google icon
+            break;
+    }
+} else if (settings.cloak_type === 'custom' && settings.cloak_custom_title) {
+    // **KEEP THE CUSTOM CLOAK LOGIC THE SAME**
+    title = settings.cloak_custom_title;
+    if (settings.cloak_custom_favicon) {
+        favicon = settings.cloak_custom_favicon;
+    }
+}
+    
+// --- APPLICATION ---
+document.title = title;
+// Update favicon
+const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
+link.rel = 'icon';
+link.href = favicon;
+console.log('[CLOAK] Applying cloak settings:', { title, favicon });
+console.log('[CLOAK] Current document title:', document.title);
+console.log('[CLOAK] Current favicon link:', link.href);
+document.getElementsByTagName('head')[0].appendChild(link);
+
+    // --- 2. Panic Key Logic ---
+    const panicHandler = (event) => {
+        if (settings.panic_key_enabled && event.keyCode === settings.panic_key_code) {
+            window.location.replace(settings.panic_key_target);
+        }
+    };
+    
+    // Remove previous listener to avoid duplicates if settings are reapplied
+    document.removeEventListener('keydown', window.moonlightPanicHandler); 
+    window.moonlightPanicHandler = panicHandler;
+    document.addEventListener('keydown', window.moonlightPanicHandler);
+
+    // --- 3. Anti Tab Close Logic ---
+    if (settings.anti_tab_close) {
+        window.onbeforeunload = function() {
+            return "Are you sure you want to leave?";
+        };
+    } else {
+        window.onbeforeunload = null;
+    }
+}
+
+// Initial call when chip.js loads and on auth change
+// Ensure this runs when the Supabase client is ready.
+window.addEventListener('supabase-ready', fetchAndApplySettings, { once: true });
+// Also run on sign in/out in case settings need to be cleared/loaded
+if (window.supabaseClient) {
+    window.supabaseClient.auth.onAuthStateChange(() => {
+        fetchAndApplySettings();
+    });
+}
+
+
+/**
+ * Helper function used by settings.js to update the global settings and DB.
+ * @param {object} updates - Object containing setting keys and new values.
+ */
+window.updateMoonlightSettings = async function(updates) {
+    if (!window.supabaseClient) return { success: false, error: 'Supabase not ready' };
+    const supabase = window.supabaseClient;
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return { success: false, error: 'User not signed in' };
+
+    // Update global cache immediately (optimistic update)
+    window.moonlightSettings = { ...window.moonlightSettings, ...updates };
+    applySettings();
+
+    // Persist to database
+    try {
+        const { error } = await supabase.from('user_settings').upsert(
+            { id: user.id, ...window.moonlightSettings },
+            { onConflict: 'id' }
+        );
+
+        if (error) throw error;
+        return { success: true };
+    } catch (e) {
+        console.error('Failed to save settings:', e);
+        // A real implementation would revert the global cache here on failure.
+        return { success: false, error: e.message };
+    }
+}
+/**
+ * --- END OF SETTINGS LOGIC FOR CHIP.JS ---
+ */

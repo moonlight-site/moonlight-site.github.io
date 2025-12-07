@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Settings — moonlight</title>
+    <link rel="icon" href="/branding/favicon.png" />
+    <script src="/js/chip.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+    <link rel="stylesheet" href="/css/settings.css"/>
+</head>
+<body>
+
+    <a href="/" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Home</a>
+
+    <div class="container">
+        <h1>User Settings</h1>
+        <p class="status-msg" id="status-msg"></p>
+
+        <div class="settings-card">
+            <h2>Tab Cloak</h2>
+            <p>Disguise your browser tab as another application (e.g., Google Drive).</p>
+
+            <label for="cloak-select" class="form-label">Cloak Option:</label>
+           <select id="cloak-select" class="form-control">
+    <option value="off">Off (Standard Tab)</option>
+
+    <option value="preset:gdoc">Fake Google Doc</option>
+    <option value="preset:gslides">Fake Google Slides</option>
+    <option value="preset:gsheets">Fake Google Sheets</option>
+    <option value="preset:calculator">Fake Calculator Search</option>
+    <option value="preset:desmoscalc">Desmos Calculator</option>
+    <option value="preset:gdrive">Google Drive</option>
+    <option value="preset:google">Google</option>
+    <option value="preset:gassign">Google Assignments</option>
+    <option value="preset:blank">Transparent Cloak</option>
+
+    <option value="custom">Custom Cloak</option>
+</select>
+
+            <div id="custom-cloak-fields" style="display:none; margin-top: 15px;">
+                <label for="custom-title" class="form-label">Custom Title:</label>
+                <input type="text" id="custom-title" class="form-control" placeholder="e.g., Science Notes"/>
+
+                <label for="custom-favicon" class="form-label">Custom Favicon URL:</label>
+                <input type="text" id="custom-favicon" class="form-control" placeholder="e.g., https://example.com/favicon.ico"/>
+            </div>
+
+        
+        </div>
+        
+        <div class="settings-card">
+            <h2>Panic Key</h2>
+            <p>Quickly redirect to a safe page when a key is pressed.</p>
+
+            <div class="form-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="panic-key-toggle">
+                    <span class="slider"></span>
+                </label>
+                <label for="panic-key-toggle" class="form-label">Enable Panic Key</label>
+            </div>
+
+            <label for="panic-key-input" class="form-label">Key to Press (Press any key below):</label>
+            <input type="text" id="panic-key-input" class="form-control" placeholder="Press a key (e.g., F9, Tab)"/>
+            <input type="hidden" id="panic-key-code-hidden" value="123"/>
+            
+            <label for="panic-target-input" class="form-label">Safe URL Target:</label>
+            <input type="url" id="panic-target-input" class="form-control" value="https://www.google.com" placeholder="https://www.google.com"/>
+
+           
+        </div>
+<div id="panic-warning" class="warning-message" style="display:none; margin-top: 15px;">
+    <strong>Conflict Warning:</strong> When "Anti Tab Close" is enabled, the Panic Key will not redirect immediately. Instead, it will only trigger the browser's confirmation dialog, which may defeat its purpose.
+</div>
+<br>
+        <div class="settings-card">
+            <h2>Anti Tab Close</h2>
+            <p>Triggers a warning popup if you try to close or navigate away from the page.</p>
+
+            <div class="form-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="anti-close-toggle">
+                    <span class="slider"></span>
+                </label>
+                <label for="anti-close-toggle" class="form-label">Enable Anti Tab Close</label>
+            </div>
+
+         
+        </div>
+
+        <div class="settings-card about-blank-card">
+            <h2>Launch</h2>
+            <p>Open this entire site inside a new `about:blank` window for maximum discretion.</p>
+            <button id="about-blank-btn" class="save-btn launch-btn">Open in about:blank</button>
+        </div>
+    </div>
+<div id="auth-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+        <h3>🔐 Sign-In Required</h3>
+        <p>You must be signed in to save or change your settings.</p>
+        <button id="modal-close-btn" class="save-btn">Close</button>
+        <a href="/" class="save-btn launch-btn" style="margin-left: 10px;">Go to Home / Sign In</a>
+    </div>
+</div>
+<div id="loading-overlay">
+    <div class="spinner"></div>
+    <p>Loading Settings...</p>
+</div>
+    <script src="/js/settings.js"></script>
+</body>
+</html>

@@ -1,0 +1,312 @@
+:root {
+    --bg: #000;
+    --fg: #fff;
+    --accent: #9b9b9b;
+    --card-bg: #111;
+    --input-bg: #222;
+    --highlight: #4a4a4a;
+    --success: #4aff8a;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Inter", sans-serif;
+}
+
+body {
+    background: var(--bg);
+    color: var(--fg);
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--fg);
+    text-decoration: none;
+    font-weight: 600;
+    margin-bottom: 30px;
+    transition: color 0.2s;
+}
+.back-btn:hover {
+    color: var(--accent);
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+h1 {
+    font-size: 2.5rem;
+    margin-bottom: 30px;
+    border-bottom: 1px solid var(--highlight);
+    padding-bottom: 10px;
+}
+
+.status-msg {
+    margin-bottom: 20px;
+    padding: 10px;
+    border-radius: 8px;
+    background: #333;
+    color: var(--fg);
+    display: none; /* Hidden by default */
+}
+.status-msg.success {
+    background: #2a6;
+    color: var(--bg);
+}
+
+.settings-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 25px;
+    margin-bottom: 25px;
+    border: 1px solid #333;
+}
+
+.settings-card h2 {
+    font-size: 1.8rem;
+    margin-bottom: 5px;
+}
+
+.settings-card p {
+    color: var(--accent);
+    margin-bottom: 20px;
+}
+
+.form-label {
+    display: block;
+    margin-top: 15px;
+    margin-bottom: 5px;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #333;
+    border-radius: 6px;
+    background: var(--input-bg);
+    color: var(--fg);
+    font-size: 1rem;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+    transition: border-color 0.2s;
+}
+.form-control:focus {
+    outline: none;
+    border-color: var(--fg);
+}
+
+.save-btn {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    margin-top: 20px;
+    border: none;
+    border-radius: 8px;
+    background: var(--highlight);
+    color: var(--fg);
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+}
+.save-btn:hover {
+    background: var(--fg);
+    color: var(--bg);
+}
+
+/* Toggle Switch Styles */
+.form-row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+}
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #555;
+    transition: 0.4s;
+    border-radius: 34px;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+}
+input:checked + .slider {
+    background-color: var(--success);
+}
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+/* About:blank Button */
+.launch-btn {
+    background: #007bff; /* A distinct color for the launch button */
+    margin-top: 10px;
+}
+.launch-btn:hover {
+    background: #0056b3;
+}
+#loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000000;                      
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: opacity 0.5s ease;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #ff0000; /* Your theme color */
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+/* =========================================
+   ⚠️ Conflict Warning Box
+   ========================================= */
+.warning-message {
+    background: rgba(255, 87, 87, 0.1); /* Very subtle red background */
+    border: 1px solid #ff5757;          /* Bright red border */
+    color: #ff5757;                     /* Red text */
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 20px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.warning-message strong {
+    display: block;
+    color: #fff;        /* White text for the "Warning:" header */
+    margin-bottom: 5px;
+    font-size: 1rem;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+
+/* =========================================
+   🔐 Auth / Sign-In Modal
+   ========================================= */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85); /* Dark dimming background */
+    backdrop-filter: blur(4px);      /* Blur effect on the background */
+    z-index: 10000;                  /* Sit on top of everything */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    animation: modalFadeIn 0.3s forwards; /* Smooth fade in */
+}
+
+@keyframes modalFadeIn {
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background: var(--card-bg);
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 30px;
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+    transform: scale(0.95);
+    animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes modalPop {
+    to { transform: scale(1); }
+}
+
+.modal-content h3 {
+    font-size: 1.6rem;
+    margin-bottom: 10px;
+    color: var(--fg);
+}
+
+.modal-content p {
+    color: var(--accent);
+    margin-bottom: 25px;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+/* Modal specific button adjustments */
+.modal-content .save-btn {
+    margin-top: 10px;
+    width: 100%;
+}
+
+.modal-content .launch-btn {
+    background: var(--highlight); /* Use grey for the 'Go Home' button */
+}
+.modal-content .launch-btn:hover {
+    background: var(--fg);
+    color: var(--bg);
+}
+
+/* Close button style (Red) */
+#modal-close-btn {
+    background: #ff5757;
+    color: white;
+}
+#modal-close-btn:hover {
+    background: #ff7eb3;
+    color: white;
+}
