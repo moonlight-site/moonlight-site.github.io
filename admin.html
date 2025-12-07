@@ -209,6 +209,7 @@
 
     <!-- Games Tab -->
     <div id="gamesTab" class="tab-content active">
+      
     <!-- Add Game form -->
     <div id="gameForm" style="margin-bottom:12px;">
       <div class="grid">
@@ -216,13 +217,16 @@
           <label>Game Name</label>
           <input id="gameName" type="text" placeholder="Enter game name">
         </div>
-        <div class="field">
-          <label>Image URL (500×500 preferred)</label>
-          <input id="gameImg" type="url" placeholder="https://...">
-        </div>
+
         <div class="field">
           <label>Game URL</label>
-          <input id="gameUrl" type="url" placeholder="https://...">
+          <div class="field">
+  <label>Upload Game Image</label>
+  <input id="gameUrl" type="file" accept="image/*">
+  <div id="imagePreview" style="margin-top:8px; display:none;">
+    <img id="previewImg" style="max-width:100px; max-height:100px; border-radius:8px;" />
+  </div>
+</div>
         </div>
         <div class="field">
           <label>Tags (comma separated)</label>
@@ -546,7 +550,78 @@ async function generateGameTags(gameName) {
     return '';
   }
 }
+// Add this code right after line 211 (after the helpers section, before the auth guard):
 
+let uploadedImageDataUrl = null;
+
+// Image compression and upload handler
+function compressImage(file, maxWidth = 500, maxHeight = 500, quality = 0.8) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        // Calculate new dimensions
+        if (width > height) {
+          if (width > maxWidth) {
+            height *= maxWidth / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width *= maxHeight / height;
+            height = maxHeight;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Convert to data URL with compression
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(dataUrl);
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const fileInput = document.getElementById('gameUrl');
+  const preview = document.getElementById('imagePreview');
+  const previewImg = document.getElementById('previewImg');
+  
+  fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) {
+      uploadedImageDataUrl = null;
+      preview.style.display = 'none';
+      return;
+    }
+    
+    try {
+      showMsg(gameFormMsg, 'Compressing image...');
+      uploadedImageDataUrl = await compressImage(file, 500, 500, 0.8);
+      previewImg.src = uploadedImageDataUrl;
+      preview.style.display = 'block';
+      showMsg(gameFormMsg, 'Image ready');
+    } catch (err) {
+      showMsg(gameFormMsg, 'Image compression failed: ' + err.message);
+      uploadedImageDataUrl = null;
+      preview.style.display = 'none';
+    }
+  });
+});
 /* --------------- auth guard & admin check --------------- */
 async function requireSignIn(){
   const client = window.supabaseClient;
@@ -658,19 +733,18 @@ function renderGames(){
 
 async function addGame(){
   const name = $('#gameName').value.trim();
-  const img = $('#gameImg').value.trim();
-  const url = $('#gameUrl').value.trim();
+  const url = uploadedImageDataUrl || '';
   const tagsRaw = $('#gameTags').value.trim();
   const desc = $('#gameDesc').value.trim();
 
-  if (!name || !url) return showMsg(gameFormMsg, 'Name and URL required');
+  if (!name || !url) return showMsg(gameFormMsg, 'Name and image required');
 
   const tags = tagsRaw ? tagsRaw.split(',').map(t=>t.trim()).filter(Boolean) : [];
 
   addGameBtn.disabled = true;
   addGameBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Adding...';
 
-  const payload = { name, description: desc, tags, img_url: img, url, plays: 0, favorites: 0 };
+  const payload = { name, description: desc, tags, img_url: url, url, plays: 0, favorites: 0 };
   const { data, error } = await window.supabaseClient.from('games').insert([payload]).select().single();
 
   addGameBtn.disabled = false;
@@ -680,17 +754,16 @@ async function addGame(){
     return showMsg(gameFormMsg, 'Add failed: ' + error.message);
   }
   // reset form
+// reset form
   $('#gameName').value = '';
-  $('#gameImg').value = '';
-  $('#gameUrl').value = '';
   $('#gameTags').value = '';
   $('#gameDesc').value = '';
-
+  uploadedImageDataUrl = null;
+  document.getElementById('imagePreview').style.display = 'none';
   cachedGames.unshift(data);
   renderGames();
   showMsg(gameFormMsg, 'Game added');
 }
-
 function openEditGame(game){
   const tagsString = Array.isArray(game.tags) ? game.tags.join(',') : (game.tags || '');
   showModal(`<h3>Edit Game</h3>

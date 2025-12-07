@@ -95,10 +95,7 @@ function renderGrid(){
     chips.append(playsChip, favChip);
     titleRow.append(name, chips);
 
-    // description (hidden until hover)
-    const desc = document.createElement('div'); desc.className = 'desc';
-    const short = ellipsize(game.description || '', 150);
-    desc.textContent = short;
+
 
     // actions
     const actions = document.createElement('div'); actions.className = 'actions';
@@ -152,7 +149,7 @@ function renderGrid(){
     actions.append(playBtn, favBtn);
 
     // assemble
-    card.append(thumb, titleRow, desc, actions);
+    card.append(thumb, titleRow, actions);
     grid.appendChild(card);
   });
 
