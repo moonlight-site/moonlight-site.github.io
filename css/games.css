@@ -206,3 +206,22 @@
   @media (max-width:720px){
     .search{ min-width:140px; }
   }
+
+  /* ADDED: Refresh button style */
+.refresh-btn {
+  /* Inherit look from .sort and .search */
+  background: var(--glass);
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  border-radius: 12px;
+  color: #fff;
+  cursor: pointer;
+  
+  /* Transition for hover/click effect */
+  transition: background 0.2s, transform 0.2s;
+}
+
+.refresh-btn:hover {
+  background: var(--glass-2);
+  transform: translateY(-2px); /* Lift button slightly on hover */
+}

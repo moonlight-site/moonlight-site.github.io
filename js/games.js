@@ -24,17 +24,35 @@ let currentUserId = null;
 const contentArea = document.getElementById('contentArea');
 const searchInput = document.getElementById('searchInput');
 const sortSelect = document.getElementById('sortSelect');
+const refreshBtn = document.getElementById('refreshBtn');
+
+// Cache the initial skeleton HTML for reuse during search and refresh
+// IMPORTANT: This needs to be captured when the page initially loads.
+const initialSkeletonElement = document.getElementById('skeletons');
+const initialSkeletonHtml = initialSkeletonElement ? initialSkeletonElement.outerHTML : '';
+
 
 /* helpers */
 const delay = ms => new Promise(r => setTimeout(r, ms));
 function ellipsize(str, n){ return str.length > n ? str.slice(0,n) + '...' : str; }
 
+// Debounce function to improve search UI/performance
+function debounce(func, timeout = 300) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { func.apply(this, args); }, timeout);
+  };
+}
+
+
 /* fetch games and favorites, but ensure skeleton shown for minimum 3s */
 async function loadData(){
-  // show skeleton is already in DOM. We will fetch and wait at least 3s.
   try {
-    // 🚨 FIX APPLIED HERE: Explicitly include 'html' in the select statement.
-    // We are changing .select('*') to a specific list to ensure 'html' is fetched.
+    // If we're loading data, ensure the skeleton is visible
+    contentArea.innerHTML = initialSkeletonHtml;
+    
+    // Explicitly include 'html' in the select statement.
     const fetchGames = supabase.from('games').select('id, name, img_url, url, plays, favorites, tags, html');
     
     const sessionResp = await supabase.auth.getSession();
@@ -55,7 +73,10 @@ async function loadData(){
       userFavorites = [];
     }
 
-    // ensure skeleton visible for at least 3s
+    // ensure skeleton visible for at least 3s (only for initial/full load)
+    // When refreshing, we want the delay to be immediate, but since we are
+    // reusing this function for the refresh button, we'll keep the delay here
+    // for a smoother loading experience on startup.
     await delay(3000);
 
     // render with initial sort
@@ -91,13 +112,12 @@ function renderGrid(){
 
     // title and chips
     const titleRow = document.createElement('div'); titleRow.className = 'title-row';
-    const name = document.createElement('div'); name.className = 'name'; name.textContent = game.name || 'Untitled';
+    const name = document.createElement('div'); name.className = 'name'; name.textContent = ellipsize(game.name || 'Untitled', 30);
     const chips = document.createElement('div'); chips.className = 'chips';
     const playsChip = document.createElement('div'); playsChip.className = 'chip'; playsChip.innerHTML = `<i class="fa-solid fa-play"></i> ${game.plays ?? 0}`;
     const favChip = document.createElement('div'); favChip.className = 'chip'; favChip.innerHTML = `<i class="fa-solid fa-heart"></i> ${game.favorites ?? 0}`;
     chips.append(playsChip, favChip);
     titleRow.append(name, chips);
-
 
 
     // actions
@@ -121,7 +141,6 @@ function renderGrid(){
       sessionStorage.setItem('currentGame', JSON.stringify(gameDetails));
 
       // 2. Save HTML content *separately* if it exists.
-      // This check will now pass if the 'html' column has data!
       if (game.html) {
           sessionStorage.setItem('currentGameHtml', game.html);
       } else {
@@ -182,6 +201,10 @@ function applyFilters(){
   const sort = sortSelect.value;
   if (sort === 'plays') filtered.sort((a,b) => (b.plays||0) - (a.plays||0));
   else if (sort === 'favorites') filtered.sort((a,b) => (b.favorites||0) - (a.favorites||0));
+  // Alphabetical sort logic (A to Z)
+  else if (sort === 'alphabetical') {
+    filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }
   else if (sort === 'your_favorites') {
     // bring favorites first, then rest by plays
     filtered.sort((a,b) => {
@@ -196,6 +219,18 @@ function applyFilters(){
   }
 
   renderGrid();
+}
+
+/** * Refactored search handler to show skeleton loader *before* debounced filtering.
+ * This is done in two steps:
+ * 1. An immediate handler shows the loader.
+ * 2. A debounced handler applies the filter and re-renders the grid.
+ */
+function handleSearchInput() {
+    // 1. Show skeleton loader immediately on input
+    contentArea.innerHTML = initialSkeletonHtml;
+    // 2. Call the debounced filter function to actually process the search
+    debouncedApplyFilters();
 }
 
 /* favorites toggle */
@@ -268,10 +303,25 @@ async function toggleFavorite(game, favBtn, favChip) {
   }
 
 }
+
 /* events */
-/* events */
-searchInput.addEventListener('input', () => { applyFilters(); });
+// NEW: Debounced function for applying filters after search
+const debouncedApplyFilters = debounce(applyFilters, 300);
+// NEW: Use the two-step handler for immediate skeleton appearance on search
+searchInput.addEventListener('input', handleSearchInput);
+
 sortSelect.addEventListener('change', () => { applyFilters(); });
+
+// Refresh button event handler - ensures skeleton reloads and data is fetched
+refreshBtn.addEventListener('click', () => {
+    // Reset the content area to the skeleton loader HTML
+    contentArea.innerHTML = initialSkeletonHtml;
+    // Clear any search term
+    searchInput.value = '';
+    // Reload all data
+    loadData();
+});
+
 
 /* initial load: wait for supabase client to be ready */
 onClientReady(async ()=>{

@@ -1,137 +1,343 @@
-    :root {
-        --bg: #000;
-        --fg: #fff;
-        --accent: #9b9b9b;
-        --card-bg: #111;
-        --glow: rgba(255,255,255,0.15);
-    }
+:root {
+    --bg: #000;
+    --fg: #fff;
+    --accent: #9b9b9b;
+    --card-bg: #111;
+    --glow: rgba(255,255,255,0.15);
+    /* Typing color variable */
+    --typing-accent: #f2f2f2;
+}
 
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-        font-family: "Inter", sans-serif;
-    }
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Inter", sans-serif;
+}
 
-    body {
-        background: var(--bg);
-        color: var(--fg);
-        overflow-x: hidden;
-    }
+body {
+    background: var(--bg);
+    color: var(--fg);
+    overflow-x: hidden;
+}
 
-    /* Background Glow Blobs */
-    .glow {
-        position: fixed;
-        width: 500px;
-        height: 500px;
-        background: radial-gradient(circle, var(--glow), transparent 60%);
-        filter: blur(120px);
-        animation: float 8s infinite ease-in-out alternate;
-        pointer-events: none;
-        z-index: -1;
-    }
-    .glow:nth-child(1) { top: -100px; left: -100px; }
-    .glow:nth-child(2) { bottom: -100px; right: -150px; animation-delay: 2s; }
+/* Background Glow Blobs */
+.glow {
+    position: fixed;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, var(--glow), transparent 60%);
+    filter: blur(120px);
+    animation: float 8s infinite ease-in-out alternate;
+    pointer-events: none;
+    z-index: -1;
+}
+.glow:nth-child(1) { top: -100px; left: -100px; }
+.glow:nth-child(2) { bottom: -100px; right: -150px; animation-delay: 2s; }
 
-    @keyframes float {
-        0% { transform: translateY(-30px) }
-        100% { transform: translateY(30px) }
-    }
+@keyframes float {
+    0% { transform: translateY(-30px) }
+    100% { transform: translateY(30px) }
+}
 
-    header {
-        width: 100%;
-        text-align: center;
-        padding: 80px 20px;
-        opacity: 0;
-        animation: fadeIn 1.4s ease forwards;
-    }
+header {
+    width: 100%;
+    text-align: center;
+    padding: 80px 20px;
+    opacity: 0;
+    animation: fadeIn 1.4s ease forwards;
+}
 
-    @keyframes fadeIn {
-        to { opacity: 1; }
-    }
+@keyframes fadeIn {
+    to { opacity: 1; }
+}
 
-    h1 {
-        font-size: 3.8rem;
-        font-weight: 700;
-        margin-bottom: 10px;
-        letter-spacing: -1px;
-    }
+/* NEW: Logo style */
+.logo {
+    margin-bottom: 20px;
+    width: 100px; /* Reduced size slightly for better fit */
+    height: 100px;
+    border-radius: 50%; 
+    box-shadow: 0 0 40px rgba(255, 255, 255, 0.1);
+}
 
-    p.sub {
-        font-size: 1.2rem;
-        color: var(--accent);
-        margin-bottom: 40px;
-    }
+h1 {
+    font-size: 3.8rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+    letter-spacing: -1px;
+}
 
-    .cta {
-        margin-top: 30px;
-        display: inline-block;
-        padding: 14px 34px;
-        border: 1px solid var(--fg);
-        border-radius: 12px;
-        font-weight: 600;
-        font-size: 1.1rem;
-        text-decoration: none;
-        color: var(--fg);
-        transition: 0.3s;
-    }
-    .cta:hover {
-        background: var(--fg);
-        color: var(--bg);
-        transform: translateY(-3px) scale(1.03);
-    }
+p.sub {
+    /* Increased size for the typing slogan */
+    font-size: 1.5rem;
+    color: var(--accent);
+    margin-bottom: 40px;
+    font-weight: 600;
+}
 
-    .features {
-        margin-top: 80px;
-        display: flex;
-        justify-content: center;
-        gap: 30px;
-        flex-wrap: wrap;
-        padding: 0 20px 120px;
-        opacity: 0;
-        animation: fadeInUp 1.4s ease 0.4s forwards;
-    }
+/* Typing Effect Styles (applied to the span inside the slogan P tag) */
+#typing-slogan span {
+    color: var(--typing-accent);
+    border-right: 3px solid var(--typing-accent);
+    padding-right: 5px;
+    animation: blink-caret 0.75s step-end infinite;
+}
 
-    @keyframes fadeInUp {
-        to {
-            opacity: 1; 
-            transform: translateY(0);
-        }
-        from {
-            transform: translateY(20px);
-        }
-    }
+@keyframes blink-caret {
+    from, to { border-color: transparent }
+    50% { border-color: var(--typing-accent); }
+}
 
-    .card {
-        background: var(--card-bg);
-        border: 1px solid #222;
-        border-radius: 20px;
-        padding: 30px;
-        width: 260px;
-        text-align: center;
-        transition: 0.35s ease;
-        cursor: default;
-    }
-    .card:hover {
-        transform: translateY(-8px) scale(1.03);
-        border-color: var(--fg);
-        box-shadow: 0 0 40px rgba(255,255,255,0.08);
-    }
+/* CTA Group Styling */
+.cta-group {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 30px;
+}
 
-    .card i {
-        font-size: 2rem;
-        margin-bottom: 18px;
-        color: var(--fg);
-    }
+.cta {
+    display: inline-block;
+    padding: 14px 34px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1.1rem;
+    text-decoration: none;
+    color: var(--fg);
+    transition: 0.3s;
+}
 
-    .card h3 {
-        font-size: 1.3rem;
-        margin-bottom: 8px;
-        font-weight: 600;
-    }
+.cta-primary {
+    border: 1px solid var(--fg);
+    color: var(--fg);
+}
+.cta-secondary {
+    border: 1px solid transparent;
+    background: #444;
+    color: var(--fg);
+}
 
-    .card p {
-        font-size: 0.95rem;
-        color: var(--accent);
-        line-height: 1.4;
+.cta-primary:hover {
+    background: var(--fg);
+    color: var(--bg);
+    transform: translateY(-3px) scale(1.03);
+}
+.cta-secondary:hover {
+    background: #666;
+    transform: translateY(-3px) scale(1.03);
+}
+
+
+/* Statistics Section Styles */
+.stats {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    padding: 40px 20px;
+    margin-top: -30px;
+    flex-wrap: wrap;
+    opacity: 0;
+    animation: fadeIn 1.4s ease 0.6s forwards;
+}
+.stat-card {
+    text-align: center;
+}
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1.1;
+    background-image: linear-gradient(45deg, #fff, #9b9b9b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.stat-label {
+    font-size: 0.9rem;
+    color: var(--accent);
+    margin-top: 5px;
+}
+
+/* Game Showcase Section Styles */
+.game-showcase {
+    padding: 80px 20px;
+    text-align: center;
+}
+.game-showcase h2 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-bottom: 30px;
+}
+.showcase-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    max-width: 960px;
+    margin: 0 auto 40px;
+}
+.showcase-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--card-bg);
+    border: 1px solid #222;
+    border-radius: 16px;
+    padding: 10px;
+    text-decoration: none;
+    color: var(--fg);
+    transition: 0.3s;
+    overflow: hidden;
+}
+.showcase-card:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    border-color: #555;
+}
+.showcase-card img {
+    width: 100%;
+    height: 140px;
+    object-fit: cover;
+    border-radius: 12px;
+    margin-bottom: 10px;
+}
+.showcase-name {
+    font-weight: 600;
+    font-size: 1.1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    padding: 0 5px;
+}
+.showcase-plays {
+    font-size: 0.85rem;
+    color: var(--accent);
+    margin-top: 5px;
+}
+.showcase-plays i {
+    font-size: 0.8em;
+    margin-right: 4px;
+}
+
+/* Skeleton for game showcase initial loading */
+.showcase-skeleton {
+    height: 200px;
+    background: linear-gradient(90deg, #111, #222, #111);
+    border-radius: 16px;
+    animation: shimmer 1.5s infinite linear;
+}
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.showcase-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    color: var(--fg);
+    text-decoration: none;
+    margin-top: 20px;
+    padding: 10px 20px;
+    border: 1px solid #333;
+    border-radius: 10px;
+    transition: 0.3s;
+}
+.showcase-cta:hover {
+    background: #333;
+    transform: translateY(-2px);
+}
+
+
+/* Feature Cards Section Styles */
+.features {
+    margin-top: 80px;
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    flex-wrap: wrap;
+    padding: 0 20px 120px;
+    opacity: 0;
+    animation: fadeInUp 1.4s ease 0.4s forwards;
+}
+
+@keyframes fadeInUp {
+    to {
+        opacity: 1; 
+        transform: translateY(0);
     }
+    from {
+        transform: translateY(20px);
+    }
+}
+
+.card {
+    background: var(--card-bg);
+    border: 1px solid #222;
+    border-radius: 20px;
+    padding: 30px;
+    width: 260px;
+    text-align: center;
+    transition: 0.35s ease;
+    cursor: default;
+    
+    /* NEW: Flex properties for button alignment */
+    height: 100%; 
+    display: flex;
+    flex-direction: column;
+}
+.card:hover {
+    transform: translateY(-8px) scale(1.03);
+    border-color: var(--fg);
+    box-shadow: 0 0 40px rgba(255,255,255,0.08);
+}
+
+.card i {
+    font-size: 2rem;
+    margin-bottom: 18px;
+    color: var(--fg);
+}
+
+.card h3 {
+    font-size: 1.3rem;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.card p {
+    font-size: 0.95rem;
+    color: var(--accent);
+    line-height: 1.4;
+    
+    /* NEW: Push button to bottom */
+    flex-grow: 1; 
+    margin-bottom: 20px;
+}
+
+/* NEW: Card Action Button Styles */
+.card-actions {
+    margin-top: auto; /* Push to the very bottom */
+}
+
+.card-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    background: #333;
+    color: var(--fg);
+    transition: 0.3s;
+    font-size: 0.9rem;
+}
+.card-btn:hover {
+    background: #555;
+    transform: scale(1.02);
+}
+.card-btn i {
+    margin-left: 8px;
+    font-size: 0.8em;
+}

@@ -6,7 +6,6 @@
 <title>moonlight — your internet, your rules.</title>
 <link rel="icon" href="/branding/favicon.png" />
 <script src="/js/chip.js"></script>
-<!-- Font + Icons -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
@@ -19,30 +18,71 @@
 <div class="glow"></div>
 
 <header>
+    <img src="branding/logo.png" alt="Moonlight Logo" class="logo"/> 
     <h1>Moonlight</h1>
-    <p class="sub">Your internet, your rules.</p>
-    <a href="/games" class="cta">Start Playing</a>
+    <p class="sub" id="typing-slogan">Your internet, <span></span></p>
+
+    <div class="cta-group">
+        <a href="/games" class="cta cta-primary">Start Playing</a>
+        <a href="/auth" class="cta cta-secondary" id="auth-cta">Sign In / Create Account</a>
+    </div>
 </header>
+
+<section class="stats">
+    <div class="stat-card">
+        <div class="stat-value" id="game-count">...</div>
+        <div class="stat-label">Unblocked Games</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">100%</div>
+        <div class="stat-label">Privacy First</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">24/7</div>
+        <div class="stat-label">Access Anywhere</div>
+    </div>
+</section>
+
+<section class="game-showcase">
+    <h2>Popular Right Now</h2>
+    <div class="showcase-grid" id="showcase-grid">
+        <div class="showcase-skeleton"></div>
+        <div class="showcase-skeleton"></div>
+        <div class="showcase-skeleton"></div>
+        <div class="showcase-skeleton"></div>
+    </div>
+    <a href="/games" class="showcase-cta">Explore All Games <i class="fa-solid fa-arrow-right"></i></a>
+</section>
 
 <section class="features">
     <div class="card">
-        <i class="fa-solid fa-gamepad"></i>
-        <h3>Play Anything</h3>
-        <p>Access your favorite games anywhere. No limits, no stress.</p>
+        <i class="fa-solid fa-robot"></i>
+        <h3>Moon</h3>
+        <p>Your unblocked personal assistant. Get help with anything. Fast.</p>
+        <div class="card-actions">
+            <a href="/moon" class="card-btn">Talk with Moon</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <i class="fa-solid fa-comments"></i>
+        <h3>Moonbeam</h3>
+        <p>Secure, fast, and completely unblocked chat for you and your friends.</p>
+        <div class="card-actions">
+            <a href="/chat" class="card-btn">Start Chatting </a>
+        </div>
     </div>
 
     <div class="card">
         <i class="fa-solid fa-cloud"></i>
         <h3>Unblocked Access</h3>
-        <p>School wifi who? Moonlight gets around all that.</p>
-    </div>
-
-    <div class="card">
-        <i class="fa-solid fa-user-shield"></i>
-        <h3>Your Privacy First</h3>
-        <p>No tracking. No weird logging. Just vibes.</p>
+        <p>Bypass school and work filters to access everything Moonlight offers.</p>
+        <div class="card-actions">
+            <a href="/games" class="card-btn">See Games </a>
+        </div>
     </div>
 </section>
 
+<script src="/js/home.js"></script>
 </body>
 </html>
