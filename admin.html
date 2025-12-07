@@ -191,7 +191,6 @@
 
 <div class="wrap">
 
-  <!-- tabs navigation -->
   <div class="panel" style="grid-column: 1 / -1; margin-bottom: 12px;">
     <div style="display: flex; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 12px;">
       <button id="tabGames" class="tab-btn active"><i class="fa-solid fa-gamepad"></i> Games</button>
@@ -202,15 +201,12 @@
     </div>
   </div>
 
-  <!-- left: main admin panel -->
   <div class="panel" id="mainPanel">
     <h1><i class="fa-solid fa-shield-halved"></i> Moonlight Admin</h1>
     <div class="sub">Manage games and user profiles. All actions are applied to Supabase immediately.</div>
 
-    <!-- Games Tab -->
     <div id="gamesTab" class="tab-content active">
       
-    <!-- Add Game form -->
     <div id="gameForm" style="margin-bottom:12px;">
       <div class="grid">
         <div class="field">
@@ -219,15 +215,18 @@
         </div>
 
         <div class="field">
-          <label>Game URL</label>
-          <div class="field">
-  <label>Upload Game Image</label>
-  <input id="gameUrl" type="file" accept="image/*">
-  <div id="imagePreview" style="margin-top:8px; display:none;">
-    <img id="previewImg" style="max-width:100px; max-height:100px; border-radius:8px;" />
-  </div>
-</div>
+          <label>Game URL (External Link)</label>
+          <input id="gameExternalUrl" type="url" placeholder="https://example.com/game.html">
         </div>
+
+        <div class="field">
+          <label>Upload Game Image</label>
+          <input id="gameImgUpload" type="file" accept="image/*">
+          <div id="imagePreview" style="margin-top:8px; display:none;">
+            <img id="previewImg" style="max-width:100px; max-height:100px; border-radius:8px;" />
+          </div>
+        </div>
+
         <div class="field">
           <label>Tags (comma separated)</label>
           <div style="display:flex; gap:8px; align-items:flex-end;">
@@ -238,7 +237,12 @@
       </div>
 
       <div class="field" style="margin-top:12px;">
-        <label>Description</label>
+        <label>HTML Content (for direct embed)</label>
+        <textarea id="gameHtmlContent" placeholder="Paste full HTML content here..."></textarea>
+        <div class="small" style="margin-top:4px;">* If this is filled, Game URL will be ignored. Content will be compressed before saving.</div>
+      </div>
+
+      <div class="field" style="margin-top:12px; display:none;"> <label>Description</label>
         <div style="display:flex; gap:8px; align-items:flex-start;">
           <textarea id="gameDesc" placeholder="Short description (up to 300 chars)" style="flex:1;"></textarea>
           <button type="button" id="generateDescBtn" class="btn btn-ghost" title="Generate description with AI" style="align-self:center;"><i class="fa-solid fa-wand-magic-sparkles"></i> Fill</button>
@@ -256,14 +260,12 @@
 
     <h3 style="margin-bottom:8px;">Games</h3>
     <div id="gamesList" class="list">
-      <!-- skeleton while loading -->
       <div class="card skeleton" style="height:96px; border-radius:12px;"></div>
       <div class="card skeleton" style="height:96px; border-radius:12px;"></div>
       <div class="card skeleton" style="height:96px; border-radius:12px;"></div>
     </div>
     </div>
 
-    <!-- Profiles Tab -->
     <div id="profilesTab" class="tab-content">
     <div style="display:flex; justify-content:space-between; align-items:center;">
       <div>
@@ -276,14 +278,12 @@
     </div>
 
     <div id="profilesList" style="display:flex; flex-direction:column; gap:10px; max-height:62vh; overflow:auto; padding-top:8px;">
-      <!-- skeleton placeholders -->
       <div class="profile-line skeleton" style="height:72px;"></div>
       <div class="profile-line skeleton" style="height:72px;"></div>
       <div class="profile-line skeleton" style="height:72px;"></div>
     </div>
     </div>
 
-    <!-- Admins Tab -->
     <div id="adminsTab" class="tab-content">
     <div style="display:flex; justify-content:space-between; align-items:center;">
       <div>
@@ -307,13 +307,11 @@
     </div>
 
     <div id="adminsList" style="display:flex; flex-direction:column; gap:10px; max-height:62vh; overflow:auto; padding-top:8px;">
-      <!-- skeleton placeholders -->
       <div class="profile-line skeleton" style="height:72px;"></div>
       <div class="profile-line skeleton" style="height:72px;"></div>
     </div>
     </div>
 
-    <!-- Bans Tab -->
     <div id="bansTab" class="tab-content">
     <div style="display:flex; justify-content:space-between; align-items:center;">
       <div>
@@ -339,13 +337,11 @@
     </div>
 
     <div id="bansList" style="display:flex; flex-direction:column; gap:10px; max-height:62vh; overflow:auto; padding-top:8px;">
-      <!-- skeleton placeholders -->
       <div class="profile-line skeleton" style="height:72px;"></div>
       <div class="profile-line skeleton" style="height:72px;"></div>
     </div>
     </div>
 
-    <!-- Settings Tab -->
     <div id="settingsTab" class="tab-content">
     <div style="display:flex; justify-content:space-between; align-items:center;">
       <div>
@@ -366,7 +362,6 @@
     </div>
   </div>
 
-  <!-- right: admin tools panel (fixed) -->
   <div class="panel side">
     <div>
       <h3 style="margin:0 0 4px 0;">Quick Stats</h3>
@@ -400,50 +395,41 @@
 <script type="module">
 
 /* ===== BANS TABLE SQL SCHEMA =====
- * 
- * Create the bans table in Supabase with the following SQL:
- * 
- * CREATE TABLE public.bans (
- *   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
- *   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
- *   username TEXT NOT NULL,
- *   reason TEXT,
- *   ban_type TEXT NOT NULL CHECK (ban_type IN ('permanent', 'temporary')),
- *   banned_until TIMESTAMP WITH TIME ZONE,
- *   is_appealable BOOLEAN DEFAULT false,
- *   offensive_content TEXT,
- *   moderator_note TEXT,
- *   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
- *   created_by_admin TEXT NOT NULL
+ * * Create the bans table in Supabase with the following SQL:
+ * * CREATE TABLE public.bans (
+ * id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+ * user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+ * username TEXT NOT NULL,
+ * reason TEXT,
+ * ban_type TEXT NOT NULL CHECK (ban_type IN ('permanent', 'temporary')),
+ * banned_until TIMESTAMP WITH TIME ZONE,
+ * is_appealable BOOLEAN DEFAULT false,
+ * offensive_content TEXT,
+ * moderator_note TEXT,
+ * created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+ * created_by_admin TEXT NOT NULL
  * );
- * 
- * CREATE INDEX idx_bans_user_id ON public.bans(user_id);
+ * * CREATE INDEX idx_bans_user_id ON public.bans(user_id);
  * CREATE INDEX idx_bans_username ON public.bans(username);
- * 
- * ===== END SCHEMA =====
+ * * ===== END SCHEMA =====
  */
 
 /* ===== ADMINS TABLE SQL SCHEMA (REFERENCE) =====
- * 
- * If you haven't created the admins table yet, use this SQL:
- * 
- * CREATE TABLE public.admins (
- *   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
- *   email TEXT NOT NULL UNIQUE,
- *   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+ * * If you haven't created the admins table yet, use this SQL:
+ * * CREATE TABLE public.admins (
+ * id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+ * email TEXT NOT NULL UNIQUE,
+ * created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
  * );
- * 
- * ===== END SCHEMA =====
+ * * ===== END SCHEMA =====
  */
 
 /* ===== SETUP INSTRUCTIONS =====
- * 
- * 1. In Supabase, go to SQL Editor and run the above schema SQL
+ * * 1. In Supabase, go to SQL Editor and run the above schema SQL
  * 2. Enable RLS (Row Level Security) on both tables if needed
  * 3. Add your admin email to the admins table
  * 4. Add banned users via the admin panel's Bans tab
- * 
- * ===== END INSTRUCTIONS =====
+ * * ===== END INSTRUCTIONS =====
  */
 
 /* ----------------- helpers ----------------- */
@@ -550,7 +536,8 @@ async function generateGameTags(gameName) {
     return '';
   }
 }
-// Add this code right after line 211 (after the helpers section, before the auth guard):
+
+/* --------------- Image Compression and Upload Handler --------------- */
 
 let uploadedImageDataUrl = null;
 
@@ -597,7 +584,7 @@ function compressImage(file, maxWidth = 500, maxHeight = 500, quality = 0.8) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  const fileInput = document.getElementById('gameUrl');
+  const fileInput = document.getElementById('gameImgUpload');
   const preview = document.getElementById('imagePreview');
   const previewImg = document.getElementById('previewImg');
   
@@ -622,6 +609,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
+/**
+ * Minifies HTML content by removing all unnecessary whitespace.
+ * @param {string} htmlString - The HTML content to compress.
+ * @returns {string} The compressed HTML string.
+ */
+function compressHtmlContent(htmlString) {
+ if (!htmlString) return '';
+ // Remove multi-line comments (C-style block comments)
+ let compressed = htmlString.replace(/\/\*[\s\S]*?\*\//g, '');
+ // Collapse whitespace between tags (optional but good practice)
+ compressed = compressed.replace(/>\s+</g, '><');
+ // Remove all leading/trailing whitespace and collapse internal whitespace to a single space
+ compressed = compressed.replace(/\s\s+/g, ' ').trim();
+ // Remove whitespace around specific characters (>, <, =, ;)
+ compressed = compressed.replace(/\s*([<>={};])\s*/g, '$1');
+ return compressed;
+}
+
 /* --------------- auth guard & admin check --------------- */
 async function requireSignIn(){
   const client = window.supabaseClient;
@@ -733,18 +739,42 @@ function renderGames(){
 
 async function addGame(){
   const name = $('#gameName').value.trim();
-  const url = uploadedImageDataUrl || '';
+  const externalUrl = $('#gameExternalUrl').value.trim();
+  const htmlRaw = $('#gameHtmlContent').value.trim(); // Raw HTML
   const tagsRaw = $('#gameTags').value.trim();
-  const desc = $('#gameDesc').value.trim();
+  const desc = $('#gameDesc').value.trim(); // This is hidden, but keep for completeness
 
-  if (!name || !url) return showMsg(gameFormMsg, 'Name and image required');
+  if (!name || (!externalUrl && !htmlRaw) || !uploadedImageDataUrl) {
+    return showMsg(gameFormMsg, 'Name, image, and EITHER URL or HTML required');
+  }
 
+  const compressedHtml = compressHtmlContent(htmlRaw); // Minify HTML
+  
   const tags = tagsRaw ? tagsRaw.split(',').map(t=>t.trim()).filter(Boolean) : [];
 
   addGameBtn.disabled = true;
   addGameBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Adding...';
 
-  const payload = { name, description: desc, tags, img_url: url, url, plays: 0, favorites: 0 };
+  const payload = { 
+    name, 
+    description: desc, 
+    tags, 
+    img_url: uploadedImageDataUrl, 
+    url: externalUrl || null, // Use URL only if no HTML is provided (or if HTML is empty)
+    html: compressedHtml || null, // Use compressed HTML
+    plays: 0, 
+    favorites: 0 
+  };
+  
+  // Important logic check: If HTML is provided, the primary URL should be null.
+  if (payload.html) {
+      payload.url = null;
+  } else if (!payload.url) {
+      // If neither HTML nor URL, something is wrong, but the initial check should catch this
+      return showMsg(gameFormMsg, 'Name, image, and EITHER URL or HTML required');
+  }
+
+
   const { data, error } = await window.supabaseClient.from('games').insert([payload]).select().single();
 
   addGameBtn.disabled = false;
@@ -753,12 +783,15 @@ async function addGame(){
   if (error) {
     return showMsg(gameFormMsg, 'Add failed: ' + error.message);
   }
+  
   // reset form
-// reset form
   $('#gameName').value = '';
+  $('#gameExternalUrl').value = '';
+  $('#gameHtmlContent').value = '';
   $('#gameTags').value = '';
   $('#gameDesc').value = '';
   uploadedImageDataUrl = null;
+  document.getElementById('gameImgUpload').value = ''; // Reset file input
   document.getElementById('imagePreview').style.display = 'none';
   cachedGames.unshift(data);
   renderGames();
@@ -769,9 +802,10 @@ function openEditGame(game){
   showModal(`<h3>Edit Game</h3>
     <div class="field"><label>Name</label><input id="e_name" value="${escapeHtml(game.name||'')}" /></div>
     <div class="field"><label>Image URL</label><input id="e_img" value="${escapeHtml(game.img_url||'')}" /></div>
-    <div class="field"><label>Game URL</label><input id="e_url" value="${escapeHtml(game.url||'')}" /></div>
+    <div class="field"><label>Game URL (External)</label><input id="e_url" value="${escapeHtml(game.url||'')}" /></div>
+    <div class="field"><label>HTML Content (Compressed)</label><textarea id="e_html">${escapeHtml(game.html||'')}</textarea></div>
     <div class="field"><label>Tags (comma separated)</label><input id="e_tags" value="${escapeHtml(tagsString)}" /></div>
-    <div class="field"><label>Description</label><textarea id="e_desc">${escapeHtml(game.description||'')}</textarea></div>
+    <div class="field"><label style="display:none;">Description</label><textarea id="e_desc" style="display:none;">${escapeHtml(game.description||'')}</textarea></div>
     <div style="display:flex;gap:8px; justify-content:flex-end; margin-top:12px;">
       <button id="egCancel" class="btn btn-ghost">Cancel</button>
       <button id="egSave" class="btn btn-primary">Save</button>
@@ -781,12 +815,24 @@ function openEditGame(game){
   $('#egSave').onclick = async ()=>{
     const name = $('#e_name').value.trim();
     const img = $('#e_img').value.trim();
-    const url = $('#e_url').value.trim();
+    let url = $('#e_url').value.trim();
+    const htmlRaw = $('#e_html').value.trim();
     const tags = ($('#e_tags').value || '').split(',').map(t=>t.trim()).filter(Boolean);
     const desc = $('#e_desc').value.trim();
+    
+    // Compress HTML on edit, and clear URL if HTML is present
+    const compressedHtml = compressHtmlContent(htmlRaw);
+    if (compressedHtml) {
+        url = null;
+    }
 
     const { error, data } = await window.supabaseClient.from('games').update({
-      name, img_url: img, url, tags, description: desc
+      name, 
+      img_url: img, 
+      url: url, 
+      html: compressedHtml, // Save the compressed HTML
+      tags, 
+      description: desc
     }).eq('id', game.id).select().single();
 
     if (error) { showModal(`<h3>Error</h3><div class="small">${error.message}</div><div style="text-align:right;margin-top:8px;"><button id="errOk" class="btn btn-primary">OK</button></div>`); $('#errOk').onclick = hideModal; return; }

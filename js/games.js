@@ -33,7 +33,10 @@ function ellipsize(str, n){ return str.length > n ? str.slice(0,n) + '...' : str
 async function loadData(){
   // show skeleton is already in DOM. We will fetch and wait at least 3s.
   try {
-    const fetchGames = supabase.from('games').select('*');
+    // 🚨 FIX APPLIED HERE: Explicitly include 'html' in the select statement.
+    // We are changing .select('*') to a specific list to ensure 'html' is fetched.
+    const fetchGames = supabase.from('games').select('id, name, img_url, url, plays, favorites, tags, html');
+    
     const sessionResp = await supabase.auth.getSession();
     currentUserId = sessionResp.data.session?.user?.id || null;
 
@@ -103,19 +106,27 @@ function renderGrid(){
     playBtn.innerHTML = `<i class="fa-solid fa-play"></i><span style="font-weight:600">Play</span>`;
     playBtn.onclick = async (e) => {
       e.preventDefault(); // Prevent default link behavior
-      
+
       // Update plays count in UI immediately (optimistic)
       const newPlays = (game.plays || 0) + 1;
       playsChip.innerHTML = `<i class="fa-solid fa-play"></i> ${newPlays}`;
       game.plays = newPlays;
-      
-      // Save game details to sessionStorage
+
+      // 1. Save game details to sessionStorage (DO NOT include the HTML here)
       const gameDetails = {
-        name: game.name || 'Untitled Game',
-        img_url: game.img_url || `https://placehold.co/500x500/000/fff?text=${encodeURIComponent(game.name?.slice(0,1) || 'G')}`,
-        url: game.url || '#'
+          name: game.name || 'Untitled Game',
+          img_url: game.img_url || `https://placehold.co/500x500/000/fff?text=${encodeURIComponent(game.name?.slice(0,1) || 'G')}`,
+          url: game.url || '#',
       };
       sessionStorage.setItem('currentGame', JSON.stringify(gameDetails));
+
+      // 2. Save HTML content *separately* if it exists.
+      // This check will now pass if the 'html' column has data!
+      if (game.html) {
+          sessionStorage.setItem('currentGameHtml', game.html);
+      } else {
+          sessionStorage.removeItem('currentGameHtml'); // Ensure old HTML is cleared
+      }
       
       // Update database
       try {
@@ -131,7 +142,7 @@ function renderGrid(){
           // Update the games array to keep it in sync
           games = games.map(g => g.id === game.id ? { ...g, plays: newPlays } : g);
           // Redirect to play page after successful update
-          window.location.href = '/play';
+          window.location.href = '/play'; 
         }
       } catch (err) {
         console.error('Error updating play count:', err);
@@ -203,7 +214,7 @@ async function toggleFavorite(game, favBtn, favChip) {
   if (currentlyFav) {
     userFavorites = userFavorites.filter(id => id !== game.id);
     favBtn.innerHTML = '<i class="fa-regular fa-heart"></i>';
-    favBtn.title = 'Add favorite';
+    favBtn.title = 'Remove favorite';
     // decrement displayed count
     favChip.innerHTML = `<i class="fa-solid fa-heart"></i> ${Math.max((game.favorites||0) - 1, 0)}`;
   } else {
