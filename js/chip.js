@@ -45,9 +45,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       <img class="chip-img" src="/branding/logo.png" alt="chip" />
       <div class="links-row" aria-hidden="true">
         <a class="chip-link" href="/home" title="home"><i class="fa fa-house"></i></a>
-        <a class="chip-link" href="/moon" title="moon ai"><i class="fa-solid fa-robot"></i></a>
         <a class="chip-link" href="/games" title="games"><i class="fa fa-gamepad"></i></a>
+        <a class="chip-link" href="/moon" title="moon ai"><i class="fa-solid fa-robot"></i></a>
         <a class="chip-link" href="/chat" title="chat"><i class="fa-solid fa-comments"></i></a>
+        <a class="chip-link" href="/legal" title="legal"><i class="fa-solid fa-gavel"></i></a>
         <a class="chip-link" href="/contact" title="contact"><i class="fa-solid fa-phone"></i></a>
         <a class="chip-link" href="/settings" title="settings"><i class="fa-solid fa-gear"></i></a>
       </div>
@@ -257,28 +258,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // loadProfile now uses the global window.supabaseClient if available
-  async function loadProfile() {
-    try {
-      const supabase = window.supabaseClient;
-      if (!supabase) return;
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-        if (error) throw error;
-        if (profile) {
-          const img = profileWrapper.querySelector('.chip-img');
-          const username = profileWrapper.querySelector('.username');
-          username.textContent = profile.username || 'User';
-          img.src = profile.avatar_url || `https://placehold.co/40x40/000/fff?text=${(profile.username||'U')[0].toUpperCase()}`;
-        }
-        
-        // Check if user is banned
-        await checkUserBan(user.id);
-      }
-    } catch (e) {
-      console.error('Profile chip load error:', e);
-    }
-  }
+// Modified loadProfile()
+async function loadProfile() {
+    try {
+        const supabase = window.supabaseClient;
+        if (!supabase) return;
+
+        // 🛑 FIX: Use getSession() for the most reliable initial check.
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        const user = session ? session.user : null;
+        
+        if (user) {
+            // ... rest of your profile loading logic ...
+            const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+            // ... update UI and check ban ...
+        }
+    } catch (e) {
+        console.error('Profile chip load error:', e);
+    }
+}
 
   // Ban checking function
   async function checkUserBan(userId) {
@@ -810,3 +809,157 @@ window.updateMoonlightSettings = async function(updates) {
 /**
  * --- END OF SETTINGS LOGIC FOR CHIP.JS ---
  */
+
+// Near the end of your script:
+if (window.supabaseClient) {
+    window.supabaseClient.auth.onAuthStateChange(() => {
+        fetchAndApplySettings();
+    });
+}
+
+// ==========================================================
+// === MANDATORY SIGN-IN GATE SCRIPT (SELF-INJECTING CSS) ===
+// ==========================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+
+    // --- 1. Define Exclusion Check ---
+    function isAuthOrLegalPage() {
+        const path = window.location.pathname.toLowerCase();
+        // Check if the current URL path contains '/auth' or '/legal'
+        return path.includes('/auth') || path.includes('/legal');
+    }
+
+    // Immediately return if we are on an excluded page
+    if (isAuthOrLegalPage()) {
+        console.log('[AuthGate] Current page is /auth or /legal. Skipping sign-in gate initialization.');
+        return;
+    }
+
+
+    // --- 2. Inject CSS Styles for the Gate ---
+    function injectGateStyles() {
+        if (document.getElementById('auth-gate-styles')) return;
+
+        const style = document.createElement("style");
+        style.id = "auth-gate-styles";
+        style.textContent = `
+            /* --- AUTH GATE STYLES --- */
+            #auth-gate-overlay {
+                position: fixed; inset: 0; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+                background: rgba(0, 0, 0, 0.7); z-index: 999999999; 
+                display: flex; align-items: center; justify-content: center;
+                transition: opacity 0.4s ease;
+            }
+            #auth-gate-popup {
+                width: 92%; max-width: 400px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 20px; padding: 30px; color: #fff; font-family: "Inter Tight", system-ui, sans-serif;
+                text-align: center; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7); animation: fadeInAuthGate .4s cubic-bezier(.2, .9, .2, 1) both;
+            }
+            @keyframes fadeInAuthGate {
+                from { opacity: 0; transform: translateY(20px) scale(.95); }
+                to { opacity: 1; transform: translateY(0) scale(1); }
+            }
+            #auth-gate-popup h2 { font-size: 24px; margin-bottom: 12px; }
+            #auth-gate-popup p { font-size: 15px; opacity: 0.85; margin-bottom: 16px; line-height: 1.6; }
+            #auth-gate-popup ul { list-style: none; padding: 0; margin: 0 0 24px 0; text-align: left; }
+            #auth-gate-popup ul li { font-size: 14px; opacity: 0.9; margin-bottom: 6px; padding-left: 20px; position: relative; }
+            #auth-gate-popup ul li::before { content: "•"; color: #4aff8a; font-size: 1.2em; line-height: 1; position: absolute; left: 0; top: 0; }
+            #auth-gate-btn {
+                background: #4aff8a; border: none; border-radius: 12px; padding: 14px 24px;
+                font-size: 16px; color: #111; font-weight: 700; cursor: pointer; transition: 0.2s;
+                box-shadow: 0 4px 10px rgba(74, 255, 138, 0.4);
+            }
+            #auth-gate-btn:hover { background: #56ff95; transform: translateY(-2px) scale(1.01); box-shadow: 0 8px 15px rgba(74, 255, 138, 0.6); }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // --- 3. Gate Injection/Removal Functions ---
+
+    function injectSignInGate() {
+        if (document.getElementById('auth-gate-overlay')) return; // Already injected
+
+        // Inject the styles first to ensure the modal looks correct immediately
+        injectGateStyles(); 
+
+        const overlay = document.createElement("div");
+        overlay.id = "auth-gate-overlay";
+
+        const popup = document.createElement("div");
+        popup.id = "auth-gate-popup";
+        popup.innerHTML = `
+            <h2><i class="fa-solid fa-shield-halved"></i> Access Restricted</h2>
+            <p>
+                To maintain a secure, high-quality experience and prevent abuse, 
+                you must be signed in to use Moonlight. If you are unable to sign in, please contact support.
+            </p>
+  
+            <button id="auth-gate-btn">Sign In</button>
+        `;
+        overlay.appendChild(popup);
+        document.body.appendChild(overlay);
+
+        document.getElementById("auth-gate-btn").addEventListener("click", () => {
+            window.location.href = '/auth'; 
+        });
+    }
+
+    function removeSignInGate() {
+        const overlay = document.getElementById('auth-gate-overlay');
+        if (overlay) {
+            overlay.style.opacity = '0';
+            setTimeout(() => overlay.remove(), 400);
+        }
+    }
+
+
+    // --- 4. Main Check on Supabase Ready ---
+
+    window.addEventListener('supabase-ready', async () => {
+        const supabase = window.supabaseClient;
+        
+        if (!supabase) {
+            console.error('[AuthGate] Supabase client is not available. Cannot run sign-in check.');
+            return;
+        }
+
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            if (!session || !session.user) {
+                console.log('[AuthGate] User not signed in. Injecting gate.');
+                injectSignInGate();
+            } else {
+                console.log('[AuthGate] User is signed in. Access granted.');
+                removeSignInGate();
+            }
+        } catch (e) {
+            console.error('[AuthGate] Error checking session:', e);
+            // Fail-safe: block access on auth check error
+            injectSignInGate(); 
+        }
+    });
+
+    // --- 5. Listen for real-time auth changes (Login/Logout) ---
+    // This assumes the window.supabaseClient is set up before this block runs.
+    if (window.supabaseClient) {
+        window.supabaseClient.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN') {
+                removeSignInGate();
+                // Show notification if the global notification system exists
+                if (window.showMoonNotification) { 
+                    window.showMoonNotification({
+                        title: "Welcome back!",
+                        body: "You are now signed in. Enjoy Moonlight!",
+                        icon: "fa-solid fa-user-check",
+                        duration: 4000
+                    });
+                }
+            } else if (event === 'SIGNED_OUT') {
+                injectSignInGate();
+            }
+        });
+    }
+});
