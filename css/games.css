@@ -14,7 +14,7 @@
   html,body{height:100%}
   body{
     min-height:100vh;
-    background: linear-gradient(135deg,var(--bg-1), #000 20%, var(--bg-2) 60%, var(--bg-1));
+    background: black;
     color:#fff;
     display:flex;
     align-items:flex-start;
