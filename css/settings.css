@@ -16,7 +16,7 @@
 }
 
 body {
-    background: var(--bg);
+background: black;
     color: var(--fg);
     min-height: 100vh;
     padding: 20px;

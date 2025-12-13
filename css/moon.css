@@ -1,7 +1,7 @@
 * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter Tight', sans-serif; }
 
 body {
-  background: linear-gradient(135deg,#000,#8c8c8c,#000);
+ background: black;
   color:#fff;
   display:flex;
   justify-content:center;
