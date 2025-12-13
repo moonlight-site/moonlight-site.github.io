@@ -963,3 +963,68 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// ==========================================================
+// === MOBILE DEVICE GATE SCRIPT (WITH SCREEN SIZE CHECK) ===
+// ==========================================================
+(function() {
+    // Define the maximum width for devices we consider "mobile/unsupported."
+    // 768px is a common breakpoint for landscape tablets or small laptops.
+    const MAX_UNSUPPORTED_WIDTH = 768; 
+    
+    // Check 1: If the viewport width is below the maximum supported width.
+    const isSmallScreen = window.innerWidth <= MAX_UNSUPPORTED_WIDTH;
+    
+    // Check 2 (Optional but recommended): Basic check for touch device capabilities.
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+    // We block access if it's a small screen, regardless of the User Agent string.
+    if (isSmallScreen) {
+        // 1. Define the replacement HTML content
+        const unsupportedMessage = `
+            <style>
+                body {
+                    margin: 0;
+                    padding: 0;
+                    background-color: #111; /* Dark background matching Moonlight theme */
+                    color: #fff;
+                    font-family: 'Inter Tight', system-ui, sans-serif;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    min-height: 100vh;
+                    text-align: center;
+                    line-height: 1.6;
+                }
+                .mobile-gate-message {
+                    padding: 30px;
+                    max-width: 90%;
+                    border-radius: 12px;
+                    background: rgba(255, 255, 255, 0.05);
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+                }
+                .mobile-gate-message h1 {
+                    font-size: 24px;
+                    margin-bottom: 10px;
+                }
+                .mobile-gate-message p {
+                    opacity: 0.8;
+                }
+            </style>
+            <div class="mobile-gate-message">
+                <h1>Mobile Device Not Supported</h1>
+                <p>
+                    Moonlight is currently optimized for desktop and larger screens only.
+                    <br>Please access the service from a desktop computer or a tablet in landscape mode.
+                </p>
+                <p style="font-size: 14px; margin-top: 15px; opacity: 0.6;">
+                    Thank you for your patience!
+                </p>
+            </div>
+        `;
+
+        // 2. Overwrite the entire document content
+        document.documentElement.innerHTML = unsupportedMessage;
+    }
+})();
