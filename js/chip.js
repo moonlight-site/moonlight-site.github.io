@@ -7,7 +7,6 @@
     
     // Check: If the viewport width is below the maximum supported width.
     if (window.innerWidth <= MAX_UNSUPPORTED_WIDTH) {
-        // Define the replacement HTML content
         const unsupportedMessage = `
             <style>
                 body { margin: 0; padding: 0; background-color: #111; color: #fff; font-family: 'Inter Tight', system-ui, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; text-align: center; line-height: 1.6; }
@@ -87,7 +86,6 @@ async function updateProfileAndUI(user) {
             if (img) img.src = '/branding/default-pfp.png';
         }
 
-        // Trigger side-effects if defined elsewhere
         if (typeof checkUserBan === 'function') checkUserBan(user.id);
         if (typeof fetchAndApplySettings === 'function') fetchAndApplySettings();
 
@@ -96,14 +94,54 @@ async function updateProfileAndUI(user) {
     }
 }
 
+/**
+ * Checks if the user is an admin and toggles the Admin link visibility.
+ * @param {object | null} user - The Supabase user object.
+ */
+async function checkAdminAndToggleUI(user) {
+    const adminContainer = document.getElementById('admin-link-container');
+    if (!adminContainer) return;
+
+    if (!user || !window.supabaseClient) {
+        adminContainer.style.display = 'none';
+        return;
+    }
+
+    try {
+        const supabase = window.supabaseClient;
+        const { data, error } = await supabase
+            .from('admins')
+            .select('email')
+            .eq('email', user.email)
+            .maybeSingle();
+
+        if (error) {
+            console.error('[AdminCheck:ERROR] Failed to check admin status:', error);
+            adminContainer.style.display = 'none';
+            return;
+        }
+
+        // data will be an object if found, or null if not found
+        if (data) {
+            console.log(`[AdminCheck:SUCCESS] User ${user.email} is an admin. Showing link.`);
+            // Use 'flex' to ensure the link lines up correctly with the links-row
+            adminContainer.style.display = 'flex'; 
+        } else {
+            adminContainer.style.display = 'none';
+        }
+    } catch (e) {
+        console.error('[AdminCheck:FATAL] Error during admin check:', e);
+        adminContainer.style.display = 'none';
+    }
+}
+
+
 // --- Ban checking functions ---
 async function checkUserBan(userId) {
-    // ... (Your original checkUserBan function logic) ...
     try {
       const supabase = window.supabaseClient;
       if (!supabase) return;
       
-      console.log('[BAN CHECK] Checking if user is banned...');
       const { data: banRecord, error } = await supabase.from('bans').select('*').eq('user_id', userId).maybeSingle();
       
       if (error) {
@@ -127,14 +165,12 @@ async function checkUserBan(userId) {
 }
 
 function showBanScreen(banRecord) {
-    // ... (Your original showBanScreen function logic) ...
     sessionStorage.setItem('banData', JSON.stringify(banRecord));
     window.location.href = '/ban.html';
 }
 
 // --- Settings functions ---
 async function fetchAndApplySettings() {
-    // ... (Your original fetchAndApplySettings function logic) ...
     if (!window.supabaseClient) {
         await new Promise(resolve => window.addEventListener('supabase-ready', resolve, { once: true }));
     }
@@ -160,7 +196,6 @@ async function fetchAndApplySettings() {
             console.warn('Failed to fetch user settings:', e);
         }
     } else {
-        // If signed out, reset to defaults
         window.moonlightSettings = { 
             cloak_type: 'off', cloak_preset: null, cloak_custom_title: null, cloak_custom_favicon: null,
             anti_tab_close: false, panic_key_enabled: false, panic_key_code: 123, panic_key_target: 'https://www.google.com',
@@ -171,7 +206,6 @@ async function fetchAndApplySettings() {
 }
 
 function applySettings() {
-    // ... (Your original applySettings function logic) ...
     const settings = window.moonlightSettings;
     
     // --- 1. Tab Cloak Logic ---
@@ -179,11 +213,9 @@ function applySettings() {
     let favicon = '/branding/favicon.png';
     
     if (settings.cloak_type === 'off') {
-        // Revert or do nothing, keeping the page's original settings
-        // The page's original HTML will define the title/favicon.
         window.onbeforeunload = settings.anti_tab_close ? function() { return "Are you sure you want to leave?"; } : null;
         document.removeEventListener('keydown', window.moonlightPanicHandler); 
-        return; // EXIT if cloak is OFF
+        return;
     }
     
     if (settings.cloak_type === 'preset') {
@@ -231,7 +263,6 @@ function applySettings() {
 
 // --- Supabase client creation ---
 function createAndDispatchClient() {
-    // ... (Your original createAndDispatchClient function logic) ...
     try {
       const supabaseUrl = 'https://mrkhmlhrbtedudclwfli.supabase.co';
       const supabaseKey = 'sb_publishable_Ej0sVQdRrHnWnctlZxWI3g_djchZi4L';
@@ -260,7 +291,6 @@ function isAuthOrLegalPage() {
 }
 
 function injectGateStyles() {
-    // ... (Your original injectGateStyles function logic) ...
     if (document.getElementById('auth-gate-styles')) return;
     const style = document.createElement("style");
     style.id = "auth-gate-styles";
@@ -272,7 +302,6 @@ function injectGateStyles() {
             display: flex; align-items: center; justify-content: center;
             transition: opacity 0.4s ease;
         }
-        /* ... (rest of the styles) ... */
         #auth-gate-popup {
             width: 92%; max-width: 400px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 20px; padding: 30px; color: #fff; font-family: "Inter Tight", system-ui, sans-serif;
@@ -299,7 +328,6 @@ function injectGateStyles() {
 }
 
 function injectSignInGate() {
-    // ... (Your original injectSignInGate function logic) ...
     if (document.getElementById('auth-gate-overlay')) return; 
     injectGateStyles(); 
     const overlay = document.createElement("div");
@@ -320,7 +348,6 @@ function injectSignInGate() {
 }
 
 function removeSignInGate() {
-    // ... (Your original removeSignInGate function logic) ...
     const overlay = document.getElementById('auth-gate-overlay');
     if (overlay) {
         overlay.style.opacity = '0';
@@ -328,9 +355,7 @@ function removeSignInGate() {
     }
 }
 
-// --- Notification system (needs to be available globally) ---
-// Note: The IIFE structure from your original file is removed and refactored into a global function
-// and a DOMContentLoaded block to ensure it's not run multiple times.
+// --- Notification system ---
 const closedNotifs = new Set();
 window.showMoonNotification = function({ 
     id, 
@@ -341,13 +366,10 @@ window.showMoonNotification = function({
     closable=true, 
     persistent=false 
 }) {
-    // ... (Your original showMoonNotification function logic) ...
     const container = document.getElementById('moonNotifContainer');
     if(!container || (persistent && id && closedNotifs.has(id))) return;
 
-    // notification wrapper
     const notif = document.createElement('div');
-    // ... (rest of notification creation logic) ...
     notif.style.cssText = `
       display:flex; align-items:flex-start; gap:12px;
       padding:12px 16px; border-radius:12px;
@@ -359,7 +381,6 @@ window.showMoonNotification = function({
       pointer-events: auto; position: relative;
     `;
 
-    // icon
     const iconEl = document.createElement('div');
     iconEl.innerHTML = `<i class="${icon}"></i>`;
     iconEl.style.cssText = `
@@ -369,7 +390,6 @@ window.showMoonNotification = function({
     `;
     notif.appendChild(iconEl);
 
-    // content
     const content = document.createElement('div');
     content.style.cssText = 'flex:1; display:flex; flex-direction:column; gap:4px;';
     const titleEl = document.createElement('div');
@@ -382,7 +402,6 @@ window.showMoonNotification = function({
     content.appendChild(bodyEl);
     notif.appendChild(content);
 
-    // close button
     if(closable){
       const closeBtn = document.createElement('div');
       closeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
@@ -396,14 +415,12 @@ window.showMoonNotification = function({
       notif.appendChild(closeBtn);
     }
 
-    // inject at top for stacking effect
     if(container.firstChild){
       container.insertBefore(notif, container.firstChild);
     } else {
       container.appendChild(notif);
     }
 
-    // animate in
     requestAnimationFrame(()=>{
       notif.style.opacity='1'; 
       notif.style.transform='translateX(0)';
@@ -445,7 +462,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         position: fixed; top: 20px; right: 20px; display: flex; flex-direction: column; 
         gap: 12px; z-index: 99999; pointer-events: none;
       `;
-      document.body.appendChild(notifContainer); // <-- Safe now that Mobile Gate is not running
+      document.body.appendChild(notifContainer);
     }
 
     // Inject Font Awesome
@@ -478,8 +495,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
 
-    // --- B. Chip Creation and Styles (Must run before updateProfileAndUI) ---
-    // (Your original Chip creation and style injection logic goes here)
+    // --- B. Chip Creation and Styles (Updated HTML with Admin Link) ---
 
     // Create Navbar Chip (Left)
     const navbarWrapper = document.createElement('div');
@@ -488,6 +504,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       <div class="chip-inner" tabindex="0" role="button" aria-label="Open quick links">
         <img class="chip-img" src="/branding/logo.png" alt="chip" />
         <div class="links-row" aria-hidden="true">
+          <span id="admin-link-container" style="display: none;">
+            <a class="chip-link" href="/admin" title="admin"><i class="fa-solid fa-shield"></i></a>
+          </span>
           <a class="chip-link" href="/home" title="home"><i class="fa fa-house"></i></a>
           <a class="chip-link" href="/games" title="games"><i class="fa fa-gamepad"></i></a>
           <a class="chip-link" href="/moon" title="moon ai"><i class="fa-solid fa-robot"></i></a>
@@ -534,6 +553,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       .chip-inner .chip-img { width:40px; height:40px; border-radius:50%; flex:0 0 40px; object-fit:cover; transition: transform 220ms ease; }
       .chip-inner .links-row, .chip-inner .profile-info { opacity:0; transform:translateX(6px); transition: opacity 220ms ease, transform 220ms ease; white-space: nowrap; font-size: 14px; color:#fff; margin-left: 6px; }
       .chip-inner .links-row { display:flex; gap:10px; align-items:center; }
+      /* Ensure the admin span behaves like a flex item when visible */
+      #admin-link-container { display: flex; align-items: center; } 
       .chip-link { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; background: rgba(255,255,255,0.06); color:#fff; text-decoration:none; font-size:18px; border:1px solid rgba(255,255,255,0.06); transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease; box-shadow:0 6px 14px rgba(0,0,0,0.35); }
       .chip-link i { pointer-events:none; }
       .chip-link:hover { transform: translateY(-6px) scale(1.06); background: rgba(255,255,255,0.12); box-shadow: 0 10px 24px rgba(0,0,0,0.5); }
@@ -599,6 +620,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const user = session ? session.user : null;
                 updateProfileAndUI(user);
                 fetchAndApplySettings(); 
+                checkAdminAndToggleUI(user); // <--- ADMIN CHECK ADDED
 
                 // Check Auth Gate on initial load
                 if (!isAuthOrLegalPage()) {
@@ -618,6 +640,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
                 updateProfileAndUI(user);
                 fetchAndApplySettings(); 
+                checkAdminAndToggleUI(user); // <--- ADMIN CHECK ADDED
             }
 
             // Auth Gate logic for real-time changes
@@ -637,7 +660,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     const AGREED_KEY = "moonlight_legal_acknowledged";
     if (localStorage.getItem(AGREED_KEY) !== "true") {
-        // (Your original Legal Popup Injection logic goes here)
         
         // ===== Inject Styles =====
         const legalStyle = document.createElement("style");
