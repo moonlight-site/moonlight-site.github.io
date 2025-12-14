@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - Lost in the Moonlight</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    
+    <style>
+        /* New Custom Variables */
+        :root {
+            --accent-color: #fff;      /* White Accent */
+            --dark-bg: #000;           /* Pure Black Background */
+            --text-color: #fff;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--dark-bg);
+            color: var(--text-color);
+            /* 2. Use Inter Tight as the primary font */
+            font-family: 'Inter Tight', system-ui, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            text-align: center;
+            line-height: 1.6;
+            flex-direction: column;
+        }
+
+        /* Container for all 404 content */
+        .error-container {
+            max-width: 90%;
+            padding: 40px 30px;
+            border-radius: 12px;
+            /* Subtle dark container for contrast on black background */
+            background: rgba(255, 255, 255, 0.05); 
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Big '404' Text */
+        .big-404 {
+            font-size: 10vw; 
+            font-weight: 900;
+            margin: 0;
+            color: var(--accent-color);
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.5); /* White glow */
+        }
+
+        /* Shuffle Phrase */
+        .shuffle-phrase {
+            font-size: 1.5em;
+            margin: 10px 0 30px 0;
+            opacity: 0.8;
+            min-height: 2em;
+        }
+
+        /* Progress Bar Styling */
+        .progress-wrapper {
+            width: 100%;
+            max-width: 400px;
+            height: 8px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 15px auto;
+        }
+
+        #progress-bar {
+            height: 100%;
+            width: 100%;
+            background-color: var(--accent-color); 
+            transform-origin: left;
+            animation: countdown 5s linear forwards; 
+        }
+
+        .redirect-text {
+            font-size: 1em;
+            opacity: 0.7;
+            margin-top: 10px;
+        }
+
+        /* Keyframes for the countdown animation */
+        @keyframes countdown {
+            0% { transform: scaleX(1); }
+            100% { transform: scaleX(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="error-container">
+        <h1 class="big-404">404</h1>
+        <p class="shuffle-phrase" id="shuffle-phrase"></p>
+
+        <div class="progress-wrapper">
+            <div id="progress-bar"></div>
+        </div>
+
+        <p class="redirect-text" id="timer-text">
+            Redirecting in 5 seconds...
+        </p>
+    </div>
+
+    <script>
+        const PHRASES = [
+            "You went too far, explorer! Let's get you back.",
+            "Looks like this page vanished into the moonlight.",
+            "Lost in space? We'll bring you back to Earth.",
+            "Someone must have misplaced the map. Oops!",
+            "The content you seek is beyond the event horizon.",
+            "This is not the URL you are looking for. *waves hand*",
+            "Did you try turning it off and on again?",
+            "404: Page not found. The server is not amused."
+        ];
+
+        const REDIRECT_TIME = 5; // Seconds
+        const shufflePhraseEl = document.getElementById('shuffle-phrase');
+        const timerTextEl = document.getElementById('timer-text');
+        let countdown = REDIRECT_TIME;
+
+        // Function to shuffle the phrase
+        function shufflePhrase() {
+            const index = Math.floor(Math.random() * PHRASES.length);
+            shufflePhraseEl.textContent = PHRASES[index];
+        }
+
+        // Function to update the countdown timer
+        function updateTimer() {
+            if (countdown > 0) {
+                timerTextEl.textContent = `Redirecting in ${countdown} second${countdown !== 1 ? 's' : ''}...`;
+                countdown--;
+                setTimeout(updateTimer, 1000); // Call itself every second
+            } else {
+                // Timer finished, perform redirect
+                timerTextEl.textContent = 'Redirecting...';
+                window.location.href = '/'; 
+            }
+        }
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', () => {
+            shufflePhrase(); // Set the initial funny phrase
+            updateTimer();   // Start the countdown
+        });
+    </script>
+</body>
+</html>
