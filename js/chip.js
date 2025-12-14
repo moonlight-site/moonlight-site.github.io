@@ -661,7 +661,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!isAuthOrLegalPage()) {
                 if (event === 'SIGNED_IN') {
                     removeSignInGate();
-                    window.showMoonNotification({ title: "Welcome back!", body: "You are now signed in. Enjoy Moonlight!", icon: "fa-solid fa-user-check", duration: 4000 });
+                    
                 } else if (event === 'SIGNED_OUT') {
                     injectSignInGate();
                 }
