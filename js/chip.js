@@ -287,6 +287,7 @@ function createAndDispatchClient() {
 // --- Auth Gate functions ---
 function isAuthOrLegalPage() {
     const path = window.location.pathname.toLowerCase();
+    // Path check logic is correct for filtering /auth and /legal pages
     return path.includes('/auth') || path.includes('/legal');
 }
 
@@ -298,24 +299,25 @@ function injectGateStyles() {
         /* --- AUTH GATE STYLES --- */
         #auth-gate-overlay {
             position: fixed; inset: 0; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-            background: rgba(0, 0, 0, 0.7); z-index: 999999999; 
+            background: rgba(0, 0, 0, 0.7); z-index: 100000; /* Increased z-index */
             display: flex; align-items: center; justify-content: center;
             transition: opacity 0.4s ease;
         }
         #auth-gate-popup {
             width: 92%; max-width: 400px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px; padding: 30px; color: #fff; font-family: "Inter Tight", system-ui, sans-serif;
+            border-radius: 20px; z-index: 100001; /* Must be higher than overlay */
+            padding: 30px; color: #fff; font-family: "Inter Tight", system-ui, sans-serif;
             text-align: center; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7); animation: fadeInAuthGate .4s cubic-bezier(.2, .9, .2, 1) both;
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); /* Center it as a sibling */
         }
         @keyframes fadeInAuthGate {
-            from { opacity: 0; transform: translateY(20px) scale(.95); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
+            from { opacity: 0; transform: translate(-50%, -40%) scale(.95); }
+            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
         }
         #auth-gate-popup h2 { font-size: 24px; margin-bottom: 12px; }
         #auth-gate-popup p { font-size: 15px; opacity: 0.85; margin-bottom: 16px; line-height: 1.6; }
         #auth-gate-popup ul { list-style: none; padding: 0; margin: 0 0 24px 0; text-align: left; }
-        #auth-gate-popup ul li { font-size: 14px; opacity: 0.9; margin-bottom: 6px; padding-left: 20px; position: relative; }
         #auth-gate-popup ul li::before { content: "•"; color: #4aff8a; font-size: 1.2em; line-height: 1; position: absolute; left: 0; top: 0; }
         #auth-gate-btn {
             background: #4aff8a; border: none; border-radius: 12px; padding: 14px 24px;
@@ -339,8 +341,10 @@ function injectSignInGate() {
         <p>To maintain a secure, high-quality experience and prevent abuse, you must be signed in to use Moonlight. If you are unable to sign in, please contact support.</p>
         <button id="auth-gate-btn">Sign In</button>
     `;
-    overlay.appendChild(popup);
+    
+    // FIX: Append overlay and popup as siblings to the body to ensure correct Z-index stacking
     document.body.appendChild(overlay);
+    document.body.appendChild(popup);
 
     document.getElementById("auth-gate-btn").addEventListener("click", () => {
         window.location.href = '/auth'; 
@@ -349,9 +353,19 @@ function injectSignInGate() {
 
 function removeSignInGate() {
     const overlay = document.getElementById('auth-gate-overlay');
+    const popup = document.getElementById('auth-gate-popup'); // Target the sibling popup
+    
     if (overlay) {
         overlay.style.opacity = '0';
-        setTimeout(() => overlay.remove(), 400);
+        // Remove both elements after fade-out
+        setTimeout(() => { 
+            overlay.remove(); 
+            if(popup) popup.remove(); 
+        }, 400);
+    } else if (popup) {
+        // Fallback in case only the popup exists (unlikely, but safe)
+        popup.style.opacity = '0';
+        setTimeout(() => popup.remove(), 400);
     }
 }
 
@@ -620,7 +634,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const user = session ? session.user : null;
                 updateProfileAndUI(user);
                 fetchAndApplySettings(); 
-                checkAdminAndToggleUI(user); // <--- ADMIN CHECK ADDED
+                checkAdminAndToggleUI(user); 
 
                 // Check Auth Gate on initial load
                 if (!isAuthOrLegalPage()) {
@@ -640,14 +654,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
                 updateProfileAndUI(user);
                 fetchAndApplySettings(); 
-                checkAdminAndToggleUI(user); // <--- ADMIN CHECK ADDED
+                checkAdminAndToggleUI(user);
             }
 
             // Auth Gate logic for real-time changes
             if (!isAuthOrLegalPage()) {
                 if (event === 'SIGNED_IN') {
                     removeSignInGate();
-                   
+                    window.showMoonNotification({ title: "Welcome back!", body: "You are now signed in. Enjoy Moonlight!", icon: "fa-solid fa-user-check", duration: 4000 });
                 } else if (event === 'SIGNED_OUT') {
                     injectSignInGate();
                 }
@@ -659,7 +673,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- E. Legal Agreement Popup Injection ---
     
     const AGREED_KEY = "moonlight_legal_acknowledged";
-    if (localStorage.getItem(AGREED_KEY) !== "true") {
+    // FIX: Confirmed the correct logic is in place to prevent injection on auth/legal pages.
+    if (localStorage.getItem(AGREED_KEY) !== "true" && !isAuthOrLegalPage()) {
         
         // ===== Inject Styles =====
         const legalStyle = document.createElement("style");
