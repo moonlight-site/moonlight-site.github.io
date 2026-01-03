@@ -1,13 +1,12 @@
 /* --------------------------
   Real-time Chat with Supabase
+  - Verified badge logic (White circle, Black check)
   - live profanity checks while typing (debounced)
   - final profanity check on send with 10s timeout
   - subscription to messages (postgres_changes)
   - signed-out => show unclosable roadblock modal
 --------------------------- */
 
-// Supabase client is provided globally by `chip.js` as window.supabaseClient.
-// Wait for it (or the 'supabase-ready' event) and then proceed.
 let supabase = null;
 let _clientReady = false;
 const _onClientReadyQueue = [];
@@ -43,7 +42,6 @@ let typingSafe = false;
 let initialLoadDone = false;
 let channel = null;
 
-/* helper: show roadblock modal (unclickable). mode: 'not-signed-in' | 'profanity' */
 function showRoadblock(mode){
   if(mode === 'not-signed-in'){
     road1.textContent = "You must be signed in to use Moonbeam.";
@@ -56,21 +54,19 @@ function showRoadblock(mode){
   roadblock.setAttribute('aria-hidden','false');
 }
 
-/* helper: hide roadblock (not used for unclosable flows) */
 function hideRoadblock(){ roadblock.style.display='none'; roadblock.setAttribute('aria-hidden','true'); }
 
-/* small util: create message DOM node */
+/* small util: create message DOM node with Verified Checkmark logic */
 function renderMessageRow(msgRow){ 
-  // msgRow: { id, user_id, message, inserted_at, profile: { username, avatar_url } }
   const row = document.createElement('div');
   const outgoing = (currentUser && msgRow.user_id === currentUser.id);
 
   row.className = 'msg-row ' + (outgoing ? 'outgoing' : 'incoming') + ' msg-appear';
   row.dataset.id = msgRow.id;
 
-  // avatar area
   const meta = document.createElement('div');
   meta.className = 'msg-meta' + (outgoing ? ' right' : '');
+  
   const avatarWrap = document.createElement('div');
   avatarWrap.className = 'avatar';
   const av = document.createElement('img');
@@ -78,12 +74,30 @@ function renderMessageRow(msgRow){
   av.src = msgRow.profile?.avatar_url || `https://placehold.co/80x80/000/fff?text=${(msgRow.profile?.username || 'U')[0].toUpperCase()}`;
   avatarWrap.appendChild(av);
 
-  // username
   const uname = document.createElement('div');
   uname.className = 'username';
-  uname.textContent = outgoing ? (msgRow.profile?.username ? msgRow.profile.username + ' (You)' : 'You') : (msgRow.profile?.username || 'User');
+  uname.style.display = 'flex';
+  uname.style.alignItems = 'center';
+  uname.style.gap = '5px';
+  
+  const nameSpan = document.createElement('span');
+  nameSpan.textContent = outgoing ? (msgRow.profile?.username ? msgRow.profile.username + ' (You)' : 'You') : (msgRow.profile?.username || 'User');
+  uname.appendChild(nameSpan);
 
-  // bubble
+  // VERIFIED CHECKMARK LOGIC
+  if (msgRow.profile?.verified === true) {
+    const badge = document.createElement('span');
+    badge.style.display = 'inline-flex';
+    badge.style.alignItems = 'center';
+    badge.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="12" fill="white"/>
+        <path d="M7 12L10.5 15.5L17 9" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    `;
+    uname.appendChild(badge);
+  }
+
   const bubble = document.createElement('div');
   bubble.className = 'bubble';
   bubble.textContent = msgRow.message;
@@ -91,29 +105,25 @@ function renderMessageRow(msgRow){
   meta.appendChild(uname);
   meta.appendChild(bubble);
 
-  // arrange: left avatar + meta for incoming, reverse for outgoing (CSS handles it)
   row.appendChild(avatarWrap);
   row.appendChild(meta);
 
-  // append to messages
   messagesEl.appendChild(row);
-  // scroll to bottom
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
-/* fetch profiles map by ids */
+/* fetch profiles map - includes 'verified' column */
 async function fetchProfilesMap(userIds){
   if(!userIds || userIds.length===0) return {};
-  const { data, error } = await supabase.from('profiles').select('id, username, avatar_url').in('id', userIds);
+  const { data, error } = await supabase.from('profiles').select('id, username, avatar_url, verified').in('id', userIds);
   if(error) return {};
   const map = {};
   data.forEach(p => map[p.id] = p);
   return map;
 }
 
-/* Load recent messages (last 100) and render (oldest -> newest) */
 async function loadInitialMessages(){
-  messagesEl.innerHTML = ''; // clear skeletons
+  messagesEl.innerHTML = '';
   try {
     const { data, error } = await supabase
       .from('messages')
@@ -121,12 +131,8 @@ async function loadInitialMessages(){
       .order('inserted_at', {ascending:true})
       .limit(200);
 
-    if(error) {
-      console.error('load messages error', error);
-      return;
-    }
+    if(error) return;
 
-    // fetch profiles for unique user_ids
     const userIds = Array.from(new Set(data.map(d => d.user_id)));
     const profiles = await fetchProfilesMap(userIds);
 
@@ -146,19 +152,14 @@ async function loadInitialMessages(){
   }
 }
 
-/* subscribe to new messages using postgres_changes via channel */
 function subscribeToMessages(){
-  // unsubscribe previous if exists
-  if(channel) {
-    try { channel.unsubscribe(); } catch(e){ /* ignore */ }
-  }
+  if(channel) { try { channel.unsubscribe(); } catch(e){} }
 
   channel = supabase.channel('public:messages')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload) => {
-      // payload.new contains the message
       const newRow = payload.new;
-      // fetch profile for sender
-      const { data: profile } = await supabase.from('profiles').select('id, username, avatar_url').eq('id', newRow.user_id).maybeSingle();
+      // Fetch profile including verified status for the new message
+      const { data: profile } = await supabase.from('profiles').select('id, username, avatar_url, verified').eq('id', newRow.user_id).maybeSingle();
       renderMessageRow({
         id: newRow.id,
         user_id: newRow.user_id,
@@ -167,13 +168,9 @@ function subscribeToMessages(){
         profile: profile || null
       });
     })
-    .subscribe(status => {
-      // status callback not always available; we rely on general client state
-      console.log('subscribe status', status);
-    });
+    .subscribe();
 }
 
-/* live profanity check while typing (debounced) */
 const liveDebounced = (function(){
   let timer = null;
   return function(fn, delay=420){
@@ -185,28 +182,23 @@ const liveDebounced = (function(){
 async function liveProfanityCheck(text){
   typingCheckToken++;
   const myToken = typingCheckToken;
-  // abort previous controller
   if(liveProfanityController) { try { liveProfanityController.abort(); } catch(e){} }
   liveProfanityController = new AbortController();
-  const controller = liveProfanityController;
-
-  // quick empty check
+  
   if(!text || text.trim().length === 0){
     inputError.style.display = 'none'; inputEl.classList.remove('input-error'); typingSafe = false; sendBtn.disabled = true; return;
   }
 
-  // call profanity API (short timeout)
   try {
     const res = await fetch('https://vector.profanity.dev', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ message: text }),
-      signal: controller.signal
+      signal: liveProfanityController.signal
     });
     if(!res.ok) throw new Error('bad profanity response');
     const data = await res.json();
-    // the API returns something like { isProfanity: true/false } — treat truthy
-    if(myToken !== typingCheckToken) return; // stale
+    if(myToken !== typingCheckToken) return;
     if(data.isProfanity){
       inputError.style.display = 'block';
       inputEl.classList.add('input-error');
@@ -220,16 +212,11 @@ async function liveProfanityCheck(text){
       sendBtn.disabled = false;
     }
   } catch(err) {
-    // if call fails while typing, be permissive but disable send until confirmed at send time
-    console.warn('live profanity check failed', err);
-    inputError.style.display = 'none';
-    inputEl.classList.remove('input-error');
     typingSafe = false;
-    sendBtn.disabled = false; // allow send optimistically (final check will gate)
+    sendBtn.disabled = false; 
   }
 }
 
-/* final check with timeout; if no response in 10s -> show roadblock and return { ok:false, reason:'timeout' } */
 async function finalProfanityCheck(message){
   const controller = new AbortController();
   const timer = setTimeout(()=>controller.abort(), 10000);
@@ -250,20 +237,16 @@ async function finalProfanityCheck(message){
   }
 }
 
-/* send message flow */
 async function sendMessageFlow(){
   const text = inputEl.value.trim();
   if(!text) return;
-  // disable UI while sending
   sendBtn.disabled = true;
   sendIcon.className = 'fa-solid fa-circle-notch fa-spin';
-  // final profanity check
+  
   const check = await finalProfanityCheck(text);
   if(!check.ok){
-    // timeout / network
     showRoadblock('profanity');
     sendIcon.className = 'fa-solid fa-paper-plane';
-    sendBtn.disabled = true;
     return;
   }
   if(check.isProfanity){
@@ -271,18 +254,14 @@ async function sendMessageFlow(){
     inputEl.classList.add('input-error');
     inputError.textContent = "This message isn't appropriate for moonlight.";
     sendIcon.className = 'fa-solid fa-paper-plane';
-    sendBtn.disabled = true;
     return;
   }
 
-  // passed -> insert into messages
   try {
     const { error } = await supabase.from('messages').insert([{ user_id: currentUser.id, message: text }]);
     if(error){
-      console.error('insert error', error);
       showMsg('Failed to send message');
     } else {
-      // clear input
       inputEl.value = '';
       typingSafe = false;
       sendBtn.disabled = true;
@@ -293,11 +272,9 @@ async function sendMessageFlow(){
     console.error('send err', err);
   } finally {
     sendIcon.className = 'fa-solid fa-paper-plane';
-    sendBtn.disabled = true;
   }
 }
 
-/* keyboard handling: Enter to send, Shift+Enter newline */
 inputEl.addEventListener('keydown', (e) => {
   if(e.key === 'Enter' && !e.shiftKey){
     e.preventDefault();
@@ -305,28 +282,22 @@ inputEl.addEventListener('keydown', (e) => {
   }
 });
 
-/* live typing -> debounce profanity check */
 inputEl.addEventListener('input', (e) => {
   const v = e.target.value;
-  // disable send until safe
   sendBtn.disabled = true;
   inputError.style.display = 'none';
   inputEl.classList.remove('input-error');
-
   liveDebounced(() => liveProfanityCheck(v), 420);
 });
 
-/* wire up send button */
 sendBtn.addEventListener('click', async () => {
   if(sendBtn.disabled) return;
   await sendMessageFlow();
 });
 
-/* helper: show signed-in user label, or show roadblock if not signed in */
 async function checkAuthAndInit(){
   const { data: { user } } = await supabase.auth.getUser();
   if(!user || !user.id){
-    // not signed in — show unclosable roadblock modal
     showRoadblock('not-signed-in');
     statusText.textContent = 'Signed out';
     statusDot.style.background = 'var(--danger)';
@@ -340,29 +311,24 @@ async function checkAuthAndInit(){
   statusText.textContent = 'Online';
   statusDot.style.background = 'var(--success)';
 
-  // enable composer only when typingSafe after checks; initially disabled until typing check
   sendBtn.disabled = true;
 
-  // load messages and subscribe
   await loadInitialMessages();
   subscribeToMessages();
 }
 
-/* small helper for showing one-off messages in UI (not used heavily) */
 function showMsg(text){
   const el = document.createElement('div');
   el.className = 'helper';
   el.style.margin = '8px';
   el.textContent = text;
-  panelAppendTemp(el);
-}
-function panelAppendTemp(el){
   const parent = document.querySelector('.card');
-  parent.appendChild(el);
-  setTimeout(()=>el.remove(),2500);
+  if(parent) {
+    parent.appendChild(el);
+    setTimeout(()=>el.remove(),2500);
+  }
 }
 
-/* start: wait for supabase client to be ready */
 onClientReady(() => {
   try { checkAuthAndInit(); } catch(e){ console.error('chat init failed', e); }
 });
