@@ -1,5 +1,4 @@
-// The supabaseClient will be provided by chip.js globally.
-let supabase = null;
+
 
 // Phrases for the typing animation (will follow "Your internet, ")
 const PHRASES = [

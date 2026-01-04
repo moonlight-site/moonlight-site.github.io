@@ -21,8 +21,10 @@ const roadblockDesc1 = document.getElementById('roadblock-desc-line1');
 const roadblockDesc2 = document.getElementById('roadblock-desc-line2');
 
 let currentProfile = null;
+let initialFlowCompleted = false;
 
-function clearPanel(){ panel.innerHTML = ''; }
+/* ---------- Basic Helpers ---------- */
+function clearPanel(){ panel.innerHTML = ''; turnstileContainerId = null; }
 function showMsg(text){
   let el = panel.querySelector('.panel-msg');
   if(!el){ el = document.createElement('div'); el.className='panel-msg small muted fade-in'; panel.appendChild(el); }
@@ -35,7 +37,6 @@ function showRoadblock(modeText){
   roadblock.setAttribute('aria-hidden','false');
 }
 function hideRoadblock(){ roadblock.style.display='none'; roadblock.setAttribute('aria-hidden','true'); }
-
 function formatDateInputValueAsAge(value){
   if(!value) return null;
   const dob = new Date(value);
@@ -45,47 +46,24 @@ function formatDateInputValueAsAge(value){
   if(m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--;
   return age;
 }
-
 function debounce(fn, wait=300){ let t; return (...args)=>{ clearTimeout(t); t = setTimeout(()=>fn(...args), wait); }; }
 
-/** * Comprehensive username validation used for both Signup and Edit 
- */
+/* ---------- Validation ---------- */
 async function validateUsername(val, currentUserId = null) {
-  // Fix for "val.trim is not a function"
   if (typeof val !== 'string') return { valid: false, message: 'Invalid username format' };
-  
   const trimmed = val.trim();
-  
   if (!trimmed) return { valid: false, message: 'Enter a username' };
   if (trimmed.length < 3) return { valid: false, message: 'Username must be at least 3 characters' };
   if (trimmed.length > 20) return { valid: false, message: 'Username must be 20 characters or less' };
-  
   const validCharRegex = /^[a-zA-Z0-9 ._]+$/;
-  if (!validCharRegex.test(trimmed)) {
-    return { valid: false, message: 'Use only letters, numbers, spaces, dots, and underscores' };
-  }
-  
+  if (!validCharRegex.test(trimmed)) return { valid: false, message: 'Letters, numbers, spaces, dots, and underscores only' };
   const startsWithValid = /^[a-zA-Z0-9]/.test(trimmed);
   const endsWithValid = /[a-zA-Z0-9]$/.test(trimmed);
-  if (!startsWithValid || !endsWithValid) {
-    return { valid: false, message: 'Username must start and end with a letter or number' };
-  }
-  
+  if (!startsWithValid || !endsWithValid) return { valid: false, message: 'Username must start and end with a letter or number' };
   try {
-    const { data: existingUser } = await supabase
-      .from('profiles')
-      .select('id, username')
-      .eq('username', trimmed)
-      .maybeSingle();
-    
-    // If found and not the current user, it's taken
-    if (existingUser && existingUser.id !== currentUserId) {
-      return { valid: false, message: 'This username is taken' };
-    }
-  } catch (err) {
-    console.error('[USERNAME] Availability check error:', err);
-  }
-  
+    const { data: existingUser } = await supabase.from('profiles').select('id, username').eq('username', trimmed).maybeSingle();
+    if (existingUser && existingUser.id !== currentUserId) return { valid: false, message: 'This username is taken' };
+  } catch (err) { console.error('[USERNAME] Check error:', err); }
   return { valid: true, message: '' };
 }
 
@@ -96,20 +74,11 @@ function validatePassword(password) {
   if (!/[a-z]/.test(password)) errors.push('Password must contain a lowercase letter');
   if (!/[0-9]/.test(password)) errors.push('Password must contain at least one number');
   if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) errors.push('Password must contain a symbol');
-  
   return { valid: errors.length === 0, errors: errors };
 }
 
 function validateEmail(email) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-}
-
-function validateProfilePicture(file) {
-  if (!file) return { valid: true, message: '' };
-  const allowedTypes = ['image/png', 'image/jpeg'];
-  if (!allowedTypes.includes(file.type)) return { valid: false, message: 'PNG or JPG only (no GIFs)' };
-  return { valid: true, message: '' };
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 async function callProfanityApiWithTimeout(message, timeoutMs = 10000){
@@ -117,19 +86,13 @@ async function callProfanityApiWithTimeout(message, timeoutMs = 10000){
   const timer = setTimeout(()=>controller.abort(), timeoutMs);
   try {
     const r = await fetch('https://vector.profanity.dev', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      signal: controller.signal,
-      body: JSON.stringify({ message })
+      method:'POST', headers:{'Content-Type':'application/json'},
+      signal: controller.signal, body: JSON.stringify({ message })
     });
     clearTimeout(timer);
-    if(!r.ok) throw new Error('profanity api error ' + r.status);
     const result = await r.json();
-    return { ok:true, isProfanity: !!result.isProfanity, raw: result };
-  } catch(err){
-    clearTimeout(timer);
-    throw err;
-  }
+    return { ok:true, isProfanity: !!result.isProfanity };
+  } catch(err){ clearTimeout(timer); throw err; }
 }
 
 function fileToBase64(file){
@@ -141,40 +104,34 @@ function fileToBase64(file){
   });
 }
 
-// ---- Turnstile bot protection helpers ----
+/* ---------- Turnstile Bot Protection ---------- */
 const TURNSTILE_SITE_KEY = '0x4AAAAAACFDuiuySIP8Fi-o';
 let turnstileContainerId = null;
 
 function renderTurnstileWidget() {
-  if (!turnstileContainerId) {
-    const container = document.createElement('div');
-    container.id = 'turnstile-widget-container';
-    container.style.cssText = 'margin: 16px 0; display: flex; justify-content: center;';
-    panel.appendChild(container);
-    turnstileContainerId = 'turnstile-widget-container';
-  }
+  // Always create a fresh container to prevent stale widget states
+  const existing = document.getElementById('turnstile-widget-container');
+  if (existing) existing.remove();
 
-  const container = document.getElementById(turnstileContainerId);
-  if (container && typeof window.turnstile !== 'undefined') {
-    try {
-      container.innerHTML = '';
-      window.turnstile.render(`#${turnstileContainerId}`, {
-        sitekey: TURNSTILE_SITE_KEY,
-        theme: 'dark'
-      });
-    } catch (e) { console.error('[TURNSTILE] Render error:', e); }
+  const container = document.createElement('div');
+  container.id = 'turnstile-widget-container';
+  container.style.cssText = 'margin: 16px 0; display: flex; justify-content: center; min-height: 65px;';
+  panel.appendChild(container);
+  
+  if (typeof window.turnstile !== 'undefined') {
+    window.turnstile.render('#turnstile-widget-container', { 
+      sitekey: TURNSTILE_SITE_KEY, 
+      theme: 'dark' 
+    });
   }
 }
 
 async function getAndValidateTurnstileToken() {
   if (typeof window.turnstile === 'undefined') return null;
-  try {
-    const token = window.turnstile.getResponse();
-    return token || null;
-  } catch (e) { return null; }
+  try { return window.turnstile.getResponse() || null; } catch (e) { return null; }
 }
 
-/* ---------------- UI flows ---------------- */
+/* ---------------- UI Flows ---------------- */
 
 function showWelcome(){
   clearPanel();
@@ -194,10 +151,7 @@ function showWelcome(){
   googleOpt.innerHTML = `<div><strong>Google</strong><div class="small muted">Securely access your account</div></div><div><i class="fa-brands fa-google"></i></div>`;
   googleOpt.onclick = async ()=>{ 
     showMsg('Redirecting to Google...'); 
-    await supabase.auth.signInWithOAuth({ 
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth` }
-    });
+    await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/auth` } });
   };
 
   actions.append(loginOpt, createOpt, googleOpt);
@@ -223,21 +177,95 @@ function showPasswordLogin(){
   const pass = createField('Password', 'password', 'password');
   const btn = document.createElement('button'); btn.className = 'btn primary'; btn.innerHTML = `<i class="fa-solid fa-key"></i> Sign in`;
   
+  const forgotLink = document.createElement('div');
+  forgotLink.className = 'small muted text-center pointer hover-white';
+  forgotLink.style.marginTop = '15px';
+  forgotLink.textContent = 'Forgot password?';
+  forgotLink.onclick = () => showForgotPassword();
+
   btn.onclick = async ()=> {
     const token = await getAndValidateTurnstileToken();
     if (!token) { showMsg('Please complete the CAPTCHA'); return; }
     showMsg('Signing in...');
     const { error } = await supabase.auth.signInWithPassword({ 
       email: email.input.value, 
-      password: pass.input.value,
-      options: { captchaToken: token }
+      password: pass.input.value, 
+      options: { captchaToken: token } 
     });
-    if(error) showMsg(error.message);
+    if(error) {
+       showMsg(error.message);
+       if(window.turnstile) window.turnstile.reset();
+    }
     else loadUserProfile();
   };
   
-  panel.append(h, email.row, pass.row, btn);
+  panel.append(h, email.row, pass.row, btn, forgotLink);
   renderTurnstileWidget();
+}
+
+function showForgotPassword() {
+  clearPanel();
+  const h = document.createElement('h1'); h.textContent = 'Reset Password';
+  const p = document.createElement('p'); p.className='small muted'; p.textContent = "Enter your email to receive a recovery link.";
+  
+  const email = createField('Email', 'email', 'email');
+  const btn = document.createElement('button'); btn.className = 'btn primary'; btn.textContent = 'Send Reset Link';
+  const back = document.createElement('button'); back.className = 'btn ghost'; back.textContent = 'Back to Login';
+  
+  back.onclick = () => showPasswordLogin();
+  
+  btn.onclick = async () => {
+    const token = await getAndValidateTurnstileToken();
+    if (!token) { 
+      showMsg('Please complete the CAPTCHA'); 
+      return; 
+    }
+    
+    showMsg('Sending reset link...');
+    const { error } = await supabase.auth.resetPasswordForEmail(email.input.value, { 
+      redirectTo: `${window.location.origin}/auth`,
+      captchaToken: token 
+    });
+    
+    if (error) {
+      showMsg(error.message);
+      if(window.turnstile) window.turnstile.reset();
+    } else {
+      showMsg('Check your email for the recovery link!');
+    }
+  };
+
+  panel.append(h, p, email.row, btn, back);
+  renderTurnstileWidget();
+}
+
+function showUpdatePasswordForm() {
+  clearPanel();
+  const h = document.createElement('h1'); h.textContent = 'New Password';
+  const pass = createField('New Password', 'new-password', 'password');
+  const confirm = createField('Confirm Password', 'confirm-password', 'password');
+  const btn = document.createElement('button'); btn.className = 'btn primary'; btn.textContent = 'Update Password';
+  const passError = document.createElement('div'); passError.className='error';
+  pass.row.append(passError);
+
+  btn.onclick = async () => {
+    if (pass.input.value !== confirm.input.value) { showMsg("Passwords don't match"); return; }
+    const vld = validatePassword(pass.input.value);
+    if (!vld.valid) { 
+      passError.style.display = 'block'; 
+      passError.innerHTML = vld.errors.map(e => `<div>${e}</div>`).join(''); 
+      return; 
+    }
+    showMsg('Updating...');
+    const { error } = await supabase.auth.updateUser({ password: pass.input.value });
+    if (error) showMsg(error.message);
+    else { 
+      showMsg('Password updated!'); 
+      window.history.replaceState(null, '', window.location.pathname); 
+      loadUserProfile(); 
+    }
+  };
+  panel.append(h, pass.row, confirm.row, btn);
 }
 
 function showMagicLogin(){
@@ -245,30 +273,28 @@ function showMagicLogin(){
   const h = document.createElement('h1'); h.textContent = 'Magic link';
   const email = createField('Email', 'email', 'email');
   const btn = document.createElement('button'); btn.className='btn primary'; btn.innerHTML = `<i class="fa-regular fa-envelope"></i> Send Link`;
-  
   btn.onclick = async ()=> {
     const token = await getAndValidateTurnstileToken();
     if (!token) { showMsg('Please complete the CAPTCHA'); return; }
     showMsg('Sending magic link...');
     const { error } = await supabase.auth.signInWithOtp({ 
-      email: email.input.value,
-      options: { captchaToken: token }
+      email: email.input.value, 
+      options: { captchaToken: token } 
     });
-    if(error) showMsg(error.message);
-    else showMsg('Check your email!');
+    if(error) {
+       showMsg(error.message);
+       if(window.turnstile) window.turnstile.reset();
+    } else showMsg('Check your email!');
   };
-  
   panel.append(h, email.row, btn);
   renderTurnstileWidget();
 }
 
 /* ---------- Signup ---------- */
-
 function showSignupForm(){
   clearPanel();
   const h = document.createElement('h1'); h.textContent = 'Create account';
-  renderTurnstileWidget();
-
+  
   const username = createField('Username', 'username', 'text');
   const email = createField('Email', 'email', 'email');
   const password = createField('Password', 'password', 'password');
@@ -278,17 +304,12 @@ function showSignupForm(){
 
   const ageError = document.createElement('div'); ageError.className='error';
   const usernameError = document.createElement('div'); usernameError.className='error';
-  const emailError = document.createElement('div'); emailError.className='error'; emailError.textContent = "Enter a valid email.";
+  const emailError = document.createElement('div'); emailError.className='error';
   const bioError = document.createElement('div'); bioError.className='error';
   const passwordError = document.createElement('div'); passwordError.className='error';
   const fileError = document.createElement('div'); fileError.className='error';
 
-  username.row.append(usernameError);
-  email.row.append(emailError);
-  password.row.append(passwordError);
-  bio.row.append(bioError);
-  fileRow.row.append(fileError);
-  dob.row.append(ageError);
+  username.row.append(usernameError); email.row.append(emailError); password.row.append(passwordError); bio.row.append(bioError); fileRow.row.append(fileError); dob.row.append(ageError);
 
   const signupBtn = document.createElement('button'); signupBtn.className='btn primary'; signupBtn.textContent='Sign Up';
   signupBtn.disabled = true; signupBtn.style.opacity = '0.7';
@@ -297,8 +318,7 @@ function showSignupForm(){
 
   const updateSignupState = () => {
     const baseOk = !emailBad && !passwordBad && ageOkay && !usernameBad && !bioBad && !fileBad;
-    signupBtn.disabled = !baseOk;
-    signupBtn.style.opacity = baseOk ? '1' : '0.7';
+    signupBtn.disabled = !baseOk; signupBtn.style.opacity = baseOk ? '1' : '0.7';
   };
 
   const checkUsernameDebounced = debounce(async (val) => {
@@ -309,11 +329,13 @@ function showSignupForm(){
     } else {
       try {
         const profCheck = await callProfanityApiWithTimeout(val, 7000);
-        if (profCheck.isProfanity) {
-          usernameBad = true; username.input.classList.add('input-error');
-          usernameError.style.display = 'block'; usernameError.textContent = "Username is inappropriate.";
-        } else {
-          usernameBad = false; username.input.classList.remove('input-error'); usernameError.style.display = 'none';
+        if (profCheck.isProfanity) { 
+          usernameBad = true; 
+          username.input.classList.add('input-error'); 
+          usernameError.textContent = "Username is inappropriate."; 
+          usernameError.style.display = 'block'; 
+        } else { 
+          usernameBad = false; username.input.classList.remove('input-error'); usernameError.style.display = 'none'; 
         }
       } catch (err) { usernameBad = false; }
     }
@@ -324,7 +346,7 @@ function showSignupForm(){
     if(!val || val.trim().length===0){ bioBad=false; bio.input.classList.remove('input-error'); bioError.style.display='none'; updateSignupState(); return; }
     try {
       const result = await callProfanityApiWithTimeout(val,7000);
-      if(result.isProfanity){ bioBad=true; bio.input.classList.add('input-error'); bioError.style.display='block'; bioError.textContent = "Bio is inappropriate."; }
+      if(result.isProfanity){ bioBad=true; bio.input.classList.add('input-error'); bioError.textContent = "Bio is inappropriate."; bioError.style.display='block'; }
       else { bioBad=false; bio.input.classList.remove('input-error'); bioError.style.display='none'; }
     } catch(err){ bioBad=false; }
     updateSignupState();
@@ -334,14 +356,12 @@ function showSignupForm(){
   bio.input.addEventListener('input', e=> checkBioDebounced(e.target.value));
   email.input.addEventListener('input', debounce(v => {
     emailBad = !validateEmail(v.target.value);
-    email.input.classList.toggle('input-error', emailBad);
     emailError.style.display = emailBad ? 'block' : 'none';
     updateSignupState();
   }));
   password.input.addEventListener('input', debounce(v => {
     const vld = validatePassword(v.target.value);
     passwordBad = !vld.valid;
-    password.input.classList.toggle('input-error', passwordBad);
     passwordError.style.display = passwordBad ? 'block' : 'none';
     passwordError.innerHTML = vld.errors.map(e => `<div>${e}</div>`).join('');
     updateSignupState();
@@ -349,7 +369,6 @@ function showSignupForm(){
   dob.input.addEventListener('change', ()=>{
     const age = formatDateInputValueAsAge(dob.input.value);
     ageOkay = age !== null && age >= 13;
-    dob.input.classList.toggle('input-error', !ageOkay);
     ageError.style.display = ageOkay ? 'none' : 'block';
     ageError.textContent = age === null ? "Enter birthday" : "You must be 13+";
     updateSignupState();
@@ -359,33 +378,24 @@ function showSignupForm(){
     const turnstileToken = await getAndValidateTurnstileToken();
     if (!turnstileToken) { showMsg('Complete CAPTCHA'); return; }
     showMsg('Creating account...');
-    
-    let avatarUrl = '';
-    if(fileRow.input.files[0]) avatarUrl = await fileToBase64(fileRow.input.files[0]);
-    else avatarUrl = `https://placehold.co/500x500/000/fff?text=${username.input.value[0].toUpperCase()}`;
-
+    let avatarUrl = fileRow.input.files[0] ? await fileToBase64(fileRow.input.files[0]) : `https://placehold.co/500x500/000/fff?text=${username.input.value[0].toUpperCase()}`;
     const { data, error } = await supabase.auth.signUp({ 
-      email: email.input.value, password: password.input.value,
-      options: { captchaToken: turnstileToken }
+      email: email.input.value, 
+      password: password.input.value, 
+      options: { captchaToken: turnstileToken } 
     });
-    
-    if(error) { showMsg(error.message); return; }
-    await supabase.from('profiles').insert([{
-      id: data.user.id, username: username.input.value, email: email.input.value,
-      bio: bio.input.value, avatar_url: avatarUrl
-    }]);
+    if(error) { showMsg(error.message); if(window.turnstile) window.turnstile.reset(); return; }
+    await supabase.from('profiles').insert([{ id: data.user.id, username: username.input.value, email: email.input.value, bio: bio.input.value, avatar_url: avatarUrl }]);
     loadUserProfile();
   };
-
   panel.append(h, username.row, email.row, password.row, dob.row, bio.row, fileRow.row, signupBtn);
+  renderTurnstileWidget();
 }
 
-/* ---------- Edit profile (with Profanity and Username checks) ---------- */
-
+/* ---------- Edit Profile ---------- */
 function showEditProfile(){
   if(!currentProfile) return;
   clearPanel();
-
   const h = document.createElement('h1'); h.textContent = 'Edit Profile';
   const username = createField('Username', 'username', 'text', currentProfile.username || '');
   const bio = createField('Bio (optional)', 'bio', 'textarea', currentProfile.bio || '');
@@ -398,7 +408,6 @@ function showEditProfile(){
   username.row.append(usernameError); bio.row.append(bioError);
 
   let usernameBad=false, bioBad=false;
-
   const updateSaveState = () => { 
     const baseOk = !usernameBad && !bioBad && username.input.value.trim().length > 0;
     saveBtn.disabled = !baseOk; saveBtn.style.opacity = baseOk ? '1' : '0.6'; 
@@ -406,70 +415,50 @@ function showEditProfile(){
 
   const checkUsernameDebounced = debounce(async (val) => {
     const v = await validateUsername(val, currentProfile.id);
-    if(!v.valid){
-      usernameBad=true; username.input.classList.add('input-error'); 
-      usernameError.textContent=v.message; usernameError.style.display='block';
-    } else {
+    if(!v.valid){ usernameBad=true; usernameError.textContent=v.message; usernameError.style.display='block'; }
+    else {
       try {
         const profCheck = await callProfanityApiWithTimeout(val, 7000);
-        if(profCheck.isProfanity){
-          usernameBad=true; username.input.classList.add('input-error');
-          usernameError.textContent="Username is inappropriate."; usernameError.style.display='block';
-        } else {
-          usernameBad=false; username.input.classList.remove('input-error'); usernameError.style.display='none';
-        }
+        if(profCheck.isProfanity){ usernameBad=true; usernameError.textContent="Username is inappropriate."; usernameError.style.display='block'; }
+        else { usernameBad=false; usernameError.style.display='none'; }
       } catch(e){ usernameBad=false; }
     }
     updateSaveState();
   }, 400);
 
   const checkBioDebounced = debounce(async (val)=>{
-    if(!val || val.trim().length === 0){ bioBad=false; bio.input.classList.remove('input-error'); bioError.style.display='none'; updateSaveState(); return; }
+    if(!val || val.trim().length === 0){ bioBad=false; bioError.style.display='none'; updateSaveState(); return; }
     try {
       const result = await callProfanityApiWithTimeout(val, 7000);
-      if(result.isProfanity){ 
-        bioBad=true; bio.input.classList.add('input-error'); 
-        bioError.textContent = "Bio is inappropriate."; bioError.style.display='block'; 
-      } else {
-        bioBad=false; bio.input.classList.remove('input-error'); bioError.style.display='none';
-      }
+      if(result.isProfanity){ bioBad=true; bioError.textContent = "Bio is inappropriate."; bioError.style.display='block'; }
+      else { bioBad=false; bioError.style.display='none'; }
     } catch(e){ bioBad=false; }
     updateSaveState();
   }, 400);
 
   username.input.addEventListener('input', e => checkUsernameDebounced(e.target.value));
   bio.input.addEventListener('input', e => checkBioDebounced(e.target.value));
-
   cancelBtn.onclick = ()=> loadUserProfile();
-
   saveBtn.onclick = async ()=>{
-    showMsg('Saving changes...');
-    let avatarUrl = currentProfile.avatar_url || '';
-    if(fileRow.input.files[0]) avatarUrl = await fileToBase64(fileRow.input.files[0]);
-
-    const { error } = await supabase.from('profiles').update({
-      username: username.input.value.trim(),
-      bio: bio.input.value.trim(),
-      avatar_url: avatarUrl
+    showMsg('Saving...');
+    let avatarUrl = fileRow.input.files[0] ? await fileToBase64(fileRow.input.files[0]) : currentProfile.avatar_url;
+    const { error } = await supabase.from('profiles').update({ 
+      username: username.input.value.trim(), 
+      bio: bio.input.value.trim(), 
+      avatar_url: avatarUrl 
     }).eq('id', currentProfile.id);
-
-    if(error) showMsg('Error: ' + error.message);
-    else { showMsg('Updated!'); setTimeout(loadUserProfile, 1000); }
+    if(error) showMsg('Error: ' + error.message); else loadUserProfile();
   };
-
   panel.append(h, username.row, bio.row, fileRow.row, saveBtn, cancelBtn);
-  updateSaveState();
 }
 
-/* ---------- Load profile view into panel ---------- */
-
+/* ---------- Profile Loader ---------- */
 async function loadUserProfile(){
   clearPanel();
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if(!user){ currentProfile = null; showWelcome(); return; }
-
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
     currentProfile = profile || { id:user.id, username:'User', email:user.email };
 
     const profileView = document.createElement('div');
@@ -483,19 +472,27 @@ async function loadUserProfile(){
       <div class="profile-bio" style="text-align:center; opacity:0.7;">${currentProfile.bio || ''}</div>
       <button class="btn logout-btn" style="margin-top:20px;"><i class="fa-solid fa-right-from-bracket"></i> Log out</button>
     `;
-
     profileView.querySelector('.edit-btn').onclick = () => showEditProfile();
-    profileView.querySelector('.logout-btn').onclick = async () => {
-      await supabase.auth.signOut();
-      loadUserProfile();
-    };
-
+    profileView.querySelector('.logout-btn').onclick = async () => { await supabase.auth.signOut(); loadUserProfile(); };
     panel.appendChild(profileView);
   } catch(err){ showWelcome(); }
 }
 
-/* ---------- helpers ---------- */
+/* ---------- OAuth Helper ---------- */
+async function handleOAuthCallback() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return false;
+    const { data: profile } = await supabase.from('profiles').select('id').eq('id', session.user.id).maybeSingle();
+    if (!profile) {
+      const username = session.user.user_metadata.full_name || session.user.email.split('@')[0];
+      await supabase.from('profiles').insert([{ id: session.user.id, username, email: session.user.email, avatar_url: session.user.user_metadata.avatar_url || "" }]);
+    }
+    return true;
+  } catch (err) { return false; }
+}
 
+/* ---------- Form Helpers ---------- */
 function createField(labelText, id, type='text', initial=''){
   const row = document.createElement('div'); row.className='field fade-in';
   const label = document.createElement('label'); label.textContent = labelText;
@@ -514,9 +511,33 @@ function createFileField(labelText, id){
   return { row, input };
 }
 
-/* ---------- init ---------- */
-
+/* ---------- Init ---------- */
 onClientReady(async ()=>{
-  supabase.auth.onAuthStateChange(() => loadUserProfile());
-  loadUserProfile();
+  const hash = window.location.hash;
+  const isRecovery = hash && hash.includes('type=recovery');
+
+  const updateUI = async (event, session) => {
+    if (isRecovery || event === "PASSWORD_RECOVERY") { 
+      showUpdatePasswordForm(); 
+      return; 
+    }
+    if (session) { 
+      await handleOAuthCallback(); 
+      loadUserProfile(); 
+    } else { 
+      showWelcome(); 
+    }
+  };
+
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === "INITIAL_SESSION" && initialFlowCompleted) return;
+    initialFlowCompleted = true;
+    updateUI(event, session);
+  });
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!initialFlowCompleted) {
+    initialFlowCompleted = true;
+    updateUI(session ? "INITIAL_SESSION" : "SIGNED_OUT", session);
+  }
 });
