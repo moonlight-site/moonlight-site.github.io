@@ -196,7 +196,7 @@ function showPasswordLogin(){
        showMsg(error.message);
        if(window.turnstile) window.turnstile.reset();
     }
-    else loadUserProfile();
+    else loadUserProfile(); window.location.reload();
   };
   
   panel.append(h, email.row, pass.row, btn, forgotLink);
@@ -453,11 +453,17 @@ function showEditProfile(){
 }
 
 /* ---------- Profile Loader ---------- */
+let profileUIRendered = false;
+
 async function loadUserProfile(){
+  if (profileUIRendered && panel.querySelector('.profile-view')) return;
+  
   clearPanel();
+  profileUIRendered = false;
+  
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if(!user){ currentProfile = null; showWelcome(); return; }
+    if(!user){ currentProfile = null; profileUIRendered = false; showWelcome(); return; }
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
     currentProfile = profile || { id:user.id, username:'User', email:user.email };
 
@@ -473,9 +479,10 @@ async function loadUserProfile(){
       <button class="btn logout-btn" style="margin-top:20px;"><i class="fa-solid fa-right-from-bracket"></i> Log out</button>
     `;
     profileView.querySelector('.edit-btn').onclick = () => showEditProfile();
-    profileView.querySelector('.logout-btn').onclick = async () => { await supabase.auth.signOut(); loadUserProfile(); };
+    profileView.querySelector('.logout-btn').onclick = async () => { await supabase.auth.signOut(); profileUIRendered = false; loadUserProfile(); };
     panel.appendChild(profileView);
-  } catch(err){ showWelcome(); }
+    profileUIRendered = true;
+  } catch(err){ profileUIRendered = false; showWelcome(); }
 }
 
 /* ---------- OAuth Helper ---------- */
@@ -515,26 +522,38 @@ function createFileField(labelText, id){
 onClientReady(async ()=>{
   const hash = window.location.hash;
   const isRecovery = hash && hash.includes('type=recovery');
+  let uiUpdateInProgress = false;
 
   const updateUI = async (event, session) => {
-    if (isRecovery || event === "PASSWORD_RECOVERY") { 
-      showUpdatePasswordForm(); 
-      return; 
-    }
-    if (session) { 
-      await handleOAuthCallback(); 
-      loadUserProfile(); 
-    } else { 
-      showWelcome(); 
+    if (uiUpdateInProgress) return; // Prevent concurrent updates
+    uiUpdateInProgress = true;
+    
+    try {
+      if (isRecovery || event === "PASSWORD_RECOVERY") { 
+        showUpdatePasswordForm(); 
+        return; 
+      }
+      if (session) { 
+        await handleOAuthCallback(); 
+        profileUIRendered = false; // Reset flag to allow re-render
+        loadUserProfile(); 
+      } else { 
+        profileUIRendered = false;
+        showWelcome(); 
+      }
+    } finally {
+      uiUpdateInProgress = false;
     }
   };
 
   supabase.auth.onAuthStateChange(async (event, session) => {
-    if (event === "INITIAL_SESSION" && initialFlowCompleted) return;
-    initialFlowCompleted = true;
+    // Only handle state changes after initial load
+    if (event === "INITIAL_SESSION") return;
+    if (!initialFlowCompleted) return;
     updateUI(event, session);
   });
 
+  // Load initial session only once
   const { data: { session } } = await supabase.auth.getSession();
   if (!initialFlowCompleted) {
     initialFlowCompleted = true;
